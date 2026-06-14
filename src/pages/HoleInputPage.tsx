@@ -6,7 +6,7 @@ import { Counter } from '../components/ui/Counter';
 import { SelectButtons } from '../components/ui/SelectButtons';
 import { Modal } from '../components/ui/Modal';
 import {
-  CLUBS_BY_SHOT_TYPE, LIE_OPTIONS, RESULT_OPTIONS,
+  LIE_OPTIONS, RESULT_OPTIONS,
   DIRECTION_OPTIONS, SHOT_TYPE_LABELS, INITIAL_CLUBS, CLUB_ORDER,
 } from '../data/initial';
 import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, TableProperties } from 'lucide-react';
@@ -43,12 +43,8 @@ function ShotInputModal({
 
   const allShotTypes: ShotType[] = ['tee', 'full', 'half', 'approach', 'bunker', 'putt'];
 
-  // クラブ候補：選択中の種別すべてのunion、未選択なら全クラブ
-  const availableClubIds = shotTypes.length > 0
-    ? [...new Set(shotTypes.flatMap(t => CLUBS_BY_SHOT_TYPE[t] ?? []))]
-    : CLUB_ORDER;
   const availableClubs = clubs
-    .filter(c => availableClubIds.includes(c.id))
+    .slice()
     .sort((a, b) => CLUB_ORDER.indexOf(a.id) - CLUB_ORDER.indexOf(b.id));
 
   function save() {
@@ -73,7 +69,7 @@ function ShotInputModal({
       <div className="space-y-5 pt-4">
         {/* Shot type（複数選択可） */}
         <div>
-          <p className="text-sm font-bold text-gray-700 mb-2">種別 <span className="font-normal text-gray-400 text-xs">複数選択可</span></p>
+          <p className="text-sm font-bold text-gray-700 mb-2">スイングタイプ <span className="font-normal text-gray-400 text-xs">複数選択可</span></p>
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
             {allShotTypes.map(t => (
               <button
@@ -405,20 +401,14 @@ export function HoleInputPage() {
       </div>
 
       {/* Bottom navigation */}
-      <div className="bg-white border-t border-gray-200 px-4 py-3 flex items-center gap-3">
-        <button
-          onClick={() => navigateHole(holeNo - 1)}
-          disabled={holeNo === 1}
-          className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gray-100 text-gray-600 disabled:opacity-30 active:bg-gray-200"
-        >
-          <ChevronLeft size={22} />
-        </button>
-        <div className="flex-1 grid grid-cols-9 gap-1">
+      <div className="bg-white border-t border-gray-200 px-4 pt-3 pb-3 space-y-1.5">
+        {/* Holes 1-9 */}
+        <div className="grid grid-cols-9 gap-1">
           {round.holes.slice(0, 9).map(h => (
             <button
               key={h.holeNo}
               onClick={() => navigateHole(h.holeNo)}
-              className={`py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              className={`py-2 rounded-lg text-xs font-bold transition-colors ${
                 h.holeNo === holeNo ? 'bg-green-800 text-white'
                   : h.score != null ? 'bg-green-100 text-green-800'
                   : 'bg-gray-100 text-gray-500'
@@ -428,31 +418,14 @@ export function HoleInputPage() {
             </button>
           ))}
         </div>
-        {isLast ? (
-          <button
-            onClick={finishRound}
-            className="flex-shrink-0 bg-green-800 text-white px-3 py-2 rounded-2xl text-sm font-bold active:bg-green-900"
-          >
-            完了
-          </button>
-        ) : (
-          <button
-            onClick={() => navigateHole(holeNo + 1)}
-            className="flex items-center justify-center w-12 h-12 rounded-2xl bg-green-800 text-white active:bg-green-900"
-          >
-            <ChevronRight size={22} />
-          </button>
-        )}
-      </div>
-      {/* Back 9 nav */}
-      {round.holes.length > 9 && (
-        <div className="bg-white border-t border-gray-100 px-4 pb-2">
+        {/* Holes 10-18 */}
+        {round.holes.length > 9 && (
           <div className="grid grid-cols-9 gap-1">
             {round.holes.slice(9).map(h => (
               <button
                 key={h.holeNo}
                 onClick={() => navigateHole(h.holeNo)}
-                className={`py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                className={`py-2 rounded-lg text-xs font-bold transition-colors ${
                   h.holeNo === holeNo ? 'bg-green-800 text-white'
                     : h.score != null ? 'bg-green-100 text-green-800'
                     : 'bg-gray-100 text-gray-500'
@@ -462,8 +435,33 @@ export function HoleInputPage() {
               </button>
             ))}
           </div>
+        )}
+        {/* Prev / Next */}
+        <div className="flex items-center justify-between pt-0.5">
+          <button
+            onClick={() => navigateHole(holeNo - 1)}
+            disabled={holeNo === 1}
+            className="flex items-center gap-1 px-4 py-2 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium disabled:opacity-30 active:bg-gray-200"
+          >
+            <ChevronLeft size={16} /> 前のホール
+          </button>
+          {isLast ? (
+            <button
+              onClick={finishRound}
+              className="bg-green-800 text-white px-5 py-2 rounded-xl text-sm font-bold active:bg-green-900"
+            >
+              ラウンド完了
+            </button>
+          ) : (
+            <button
+              onClick={() => navigateHole(holeNo + 1)}
+              className="flex items-center gap-1 px-4 py-2 rounded-xl bg-green-800 text-white text-sm font-medium active:bg-green-900"
+            >
+              次のホール <ChevronRight size={16} />
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Shot modal */}
       {shotModal && (
