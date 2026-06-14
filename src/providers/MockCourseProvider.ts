@@ -5,7 +5,7 @@ export interface CourseDataProvider {
   getCourseDetail(id: string): Promise<Partial<Course> | undefined>;
 }
 
-type HoleRaw = [number, number, number, number, number, number]; // [par, back, regular, front, ladies, hdcp]
+type HoleRaw = [number, number, number, number, number, number, number?]; // [par, back, regular, front, ladies, hdcp, custom?]
 
 const MOCK_COURSES_RAW: {
   id: string;
@@ -150,6 +150,34 @@ const MOCK_COURSES_RAW: {
       [4, 408, 388, 365, 315, 14],
     ],
   },
+  {
+    id: 'mock-rose',
+    name: 'ローズゴルフクラブ',
+    prefecture: '滋賀県',
+    location: '滋賀県甲賀市信楽町',
+    sourceUrl: '',
+    holes: [
+      // [par, back(BLUE), regular(WHITE), front(GOLD), ladies(RED), hdcp, custom(SCARLETT)]
+      [5, 518, 491, 468, 418,  5, 259],
+      [4, 348, 330, 311, 242, 15, 184],
+      [3, 178, 155, 143, 133, 17,  99],
+      [4, 430, 410, 384, 286,  3, 242],
+      [4, 408, 390, 336, 257,  7, 257],
+      [4, 343, 325, 323, 295, 13, 222],
+      [5, 602, 584, 561, 450,  1, 388],
+      [3, 184, 170, 152, 138, 11, 138],
+      [4, 385, 360, 338, 308,  9, 197],
+      [5, 555, 503, 477, 461,  6, 335],
+      [4, 395, 371, 361, 251, 10, 251],
+      [3, 165, 149, 149, 135, 18, 107],
+      [5, 632, 558, 540, 409,  2, 315],
+      [4, 379, 354, 354, 303, 16, 303],
+      [4, 425, 400, 375, 277,  4, 245],
+      [4, 345, 325, 304, 219, 12, 219],
+      [3, 175, 157, 145, 126, 14, 101],
+      [4, 412, 392, 362, 329,  8, 193],
+    ],
+  },
 ];
 
 function buildCourse(raw: typeof MOCK_COURSES_RAW[0]): Partial<Course> {
@@ -165,6 +193,7 @@ function buildCourse(raw: typeof MOCK_COURSES_RAW[0]): Partial<Course> {
       regular: h[2],
       front: h[3],
       ladies: h[4],
+      custom: h[6],
     },
   }));
   return {
