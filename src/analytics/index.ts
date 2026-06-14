@@ -205,15 +205,28 @@ export function generatePracticeMenu(losses: LossCategory[]): PracticeItem[] {
     .filter(Boolean) as PracticeItem[];
 }
 
-export function calcClubStats(rounds: Round[]): { clubId: string; total: number; missCount: number }[] {
-  const map = new Map<string, { total: number; missCount: number }>();
+export type ClubStat = {
+  clubId: string;
+  total: number;
+  niceCount: number;
+  okCount: number;
+  yamamisuCount: number;
+  misuCount: number;
+};
+
+export function calcClubStats(rounds: Round[]): ClubStat[] {
+  const map = new Map<string, Omit<ClubStat, 'clubId'>>();
   for (const round of rounds) {
     for (const hole of round.holes) {
       for (const shot of hole.shots) {
         if (!shot.clubId) continue;
-        const cur = map.get(shot.clubId) ?? { total: 0, missCount: 0 };
+        const cur = map.get(shot.clubId) ?? { total: 0, niceCount: 0, okCount: 0, yamamisuCount: 0, misuCount: 0 };
         cur.total++;
-        if (shot.results?.some(r => MISS_RESULTS.has(r))) cur.missCount++;
+        const rs = shot.results ?? [];
+        if (rs.includes('ナイス')) cur.niceCount++;
+        if (rs.includes('OK') || rs.includes('普通')) cur.okCount++;
+        if (rs.includes('ややミス')) cur.yamamisuCount++;
+        if (rs.includes('ミス')) cur.misuCount++;
         map.set(shot.clubId, cur);
       }
     }

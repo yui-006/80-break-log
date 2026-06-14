@@ -1,5 +1,6 @@
 import { useApp } from '../context/AppContext';
 import { calcScoreStats, calcLosses, calcClubStats } from '../analytics';
+import type { ClubStat } from '../analytics';
 import { INITIAL_CLUBS } from '../data/initial';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -116,28 +117,51 @@ export function AnalysisPage() {
         {/* Club usage */}
         {clubStats.length > 0 && (
           <div className="bg-zinc-900 rounded-2xl p-4">
-            <h2 className="font-bold text-white mb-3">クラブ別使用回数・ミス率</h2>
-            <div className="space-y-2">
-              {clubStats.slice(0, 10).map(cs => {
+            <h2 className="font-bold text-white mb-1">クラブ別総評</h2>
+            <div className="flex gap-3 text-xs text-zinc-500 mb-3">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-lime-400 inline-block" />ナイス</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />OK</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block" />ややミス</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" />ミス</span>
+            </div>
+            <div className="space-y-3">
+              {clubStats.slice(0, 13).map((cs: ClubStat) => {
                 const club = clubs.find(c => c.id === cs.clubId);
                 if (!club) return null;
-                const missRate = cs.total > 0 ? cs.missCount / cs.total : 0;
+                const t = cs.total;
+                const pct = (n: number) => t > 0 ? Math.round(n / t * 100) : 0;
+                const nPct = pct(cs.niceCount);
+                const oPct = pct(cs.okCount);
+                const yPct = pct(cs.yamamisuCount);
+                const mPct = pct(cs.misuCount);
+                const hasEval = cs.niceCount + cs.okCount + cs.yamamisuCount + cs.misuCount > 0;
                 return (
-                  <div key={cs.clubId} className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-zinc-300 w-10 flex-shrink-0">{club.name}</span>
-                    <div className="flex-1 bg-zinc-800 rounded-full h-3 relative">
-                      <div className="bg-lime-500 h-3 rounded-full"
-                        style={{ width: `${(cs.total / clubStats[0].total) * 100}%` }} />
-                      <div className="bg-red-500 h-3 rounded-full absolute top-0 left-0"
-                        style={{ width: `${(cs.missCount / clubStats[0].total) * 100}%` }} />
+                  <div key={cs.clubId}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold text-white w-8 flex-shrink-0">{club.name}</span>
+                      <span className="text-xs text-zinc-500">{t}回</span>
                     </div>
-                    <span className="text-xs text-zinc-500 w-20 flex-shrink-0 text-right">
-                      {cs.total}回 / ミス{Math.round(missRate * 100)}%
-                    </span>
+                    {hasEval ? (
+                      <>
+                        <div className="flex rounded-full overflow-hidden h-2.5 bg-zinc-800">
+                          {nPct > 0 && <div className="bg-lime-400 h-full" style={{ width: `${nPct}%` }} />}
+                          {oPct > 0 && <div className="bg-blue-400 h-full" style={{ width: `${oPct}%` }} />}
+                          {yPct > 0 && <div className="bg-orange-400 h-full" style={{ width: `${yPct}%` }} />}
+                          {mPct > 0 && <div className="bg-red-400 h-full" style={{ width: `${mPct}%` }} />}
+                        </div>
+                        <div className="flex gap-3 mt-1">
+                          <span className="text-xs text-lime-400">{nPct}%</span>
+                          <span className="text-xs text-blue-400">{oPct}%</span>
+                          <span className="text-xs text-orange-400">{yPct}%</span>
+                          <span className="text-xs text-red-400">{mPct}%</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="h-2.5 rounded-full bg-zinc-800" />
+                    )}
                   </div>
                 );
               })}
-              <p className="text-xs text-zinc-600 mt-1">緑: 総数 / 赤: ミス</p>
             </div>
           </div>
         )}
