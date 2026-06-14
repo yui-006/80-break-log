@@ -10,6 +10,13 @@ export type Club = {
   flex?: string;
 };
 
+export type ClubSet = {
+  id: string;
+  name: string;
+  clubs: Club[];
+  createdAt: string;
+};
+
 export type ShotType = 'tee' | 'full' | 'half' | 'approach' | 'bunker' | 'putt';
 
 export type Course = {
@@ -136,6 +143,8 @@ export type AppData = {
   courses: Course[];
   rounds: Round[];
   clubs: Club[];
+  clubSets?: ClubSet[];
+  activeClubSetId?: string;
   exportedAt: string;
   version: string;
 };

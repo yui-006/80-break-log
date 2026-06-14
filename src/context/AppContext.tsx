@@ -1,32 +1,44 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import type { Course, Round, Club, AppData } from '../types';
+import type { Course, Round, Club, ClubSet, AppData } from '../types';
 import { storage } from '../db/indexedDB';
 import { INITIAL_CLUBS } from '../data/initial';
+
+const ACTIVE_SET_KEY = '80bl-active-set';
+function genId() { return crypto.randomUUID(); }
 
 type AppState = {
   courses: Course[];
   rounds: Round[];
   clubs: Club[];
+  clubSets: ClubSet[];
+  activeClubSetId: string | null;
   loading: boolean;
   error: string | null;
 };
 
 type AppAction =
-  | { type: 'LOAD'; payload: { courses: Course[]; rounds: Round[]; clubs: Club[] } }
+  | { type: 'LOAD'; payload: { courses: Course[]; rounds: Round[]; clubSets: ClubSet[]; activeClubSetId: string | null } }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'UPSERT_COURSE'; payload: Course }
   | { type: 'DELETE_COURSE'; payload: string }
   | { type: 'UPSERT_ROUND'; payload: Round }
   | { type: 'DELETE_ROUND'; payload: string }
-  | { type: 'UPSERT_CLUB'; payload: Club }
-  | { type: 'DELETE_CLUB'; payload: string }
+  | { type: 'UPSERT_CLUB_SET'; payload: ClubSet }
+  | { type: 'DELETE_CLUB_SET'; payload: string }
+  | { type: 'SET_ACTIVE_CLUB_SET'; payload: string }
   | { type: 'LOAD_DATA'; payload: AppData };
+
+function activeClubs(sets: ClubSet[], activeId: string | null): Club[] {
+  return sets.find(s => s.id === activeId)?.clubs ?? [];
+}
 
 function reducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
-    case 'LOAD':
-      return { ...state, ...action.payload, loading: false };
+    case 'LOAD': {
+      const clubs = activeClubs(action.payload.clubSets, action.payload.activeClubSetId);
+      return { ...state, ...action.payload, clubs, loading: false };
+    }
     case 'SET_LOADING':
       return { ...state, loading: action.payload };
     case 'SET_ERROR':
@@ -49,22 +61,30 @@ function reducer(state: AppState, action: AppAction): AppState {
       };
     case 'DELETE_ROUND':
       return { ...state, rounds: state.rounds.filter(r => r.id !== action.payload) };
-    case 'UPSERT_CLUB':
-      return {
-        ...state,
-        clubs: state.clubs.some(c => c.id === action.payload.id)
-          ? state.clubs.map(c => c.id === action.payload.id ? action.payload : c)
-          : [...state.clubs, action.payload],
-      };
-    case 'DELETE_CLUB':
-      return { ...state, clubs: state.clubs.filter(c => c.id !== action.payload) };
-    case 'LOAD_DATA':
+    case 'UPSERT_CLUB_SET': {
+      const sets = state.clubSets.some(s => s.id === action.payload.id)
+        ? state.clubSets.map(s => s.id === action.payload.id ? action.payload : s)
+        : [...state.clubSets, action.payload];
+      return { ...state, clubSets: sets, clubs: activeClubs(sets, state.activeClubSetId) };
+    }
+    case 'DELETE_CLUB_SET':
+      return { ...state, clubSets: state.clubSets.filter(s => s.id !== action.payload) };
+    case 'SET_ACTIVE_CLUB_SET': {
+      const clubs = activeClubs(state.clubSets, action.payload);
+      return { ...state, activeClubSetId: action.payload, clubs };
+    }
+    case 'LOAD_DATA': {
+      const sets = action.payload.clubSets ?? [];
+      const activeId = action.payload.activeClubSetId ?? sets[0]?.id ?? null;
       return {
         ...state,
         courses: action.payload.courses,
         rounds: action.payload.rounds,
-        clubs: action.payload.clubs,
+        clubSets: sets,
+        activeClubSetId: activeId,
+        clubs: activeClubs(sets, activeId),
       };
+    }
     default:
       return state;
   }
@@ -78,6 +98,9 @@ type AppContextType = {
   deleteRound: (id: string) => Promise<void>;
   saveClub: (club: Club) => Promise<void>;
   deleteClub: (id: string) => Promise<void>;
+  saveClubSet: (set: ClubSet) => Promise<void>;
+  deleteClubSet: (id: string) => Promise<void>;
+  setActiveClubSet: (id: string) => void;
   exportData: () => Promise<string>;
   importData: (json: string) => Promise<void>;
   clearAll: () => Promise<void>;
@@ -90,6 +113,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     courses: [],
     rounds: [],
     clubs: [],
+    clubSets: [],
+    activeClubSetId: null,
     loading: true,
     error: null,
   });
@@ -97,20 +122,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const [courses, rounds, clubs] = await Promise.all([
+        const [courses, rounds, existingClubs, clubSets] = await Promise.all([
           storage.getCourses(),
           storage.getRounds(),
           storage.getClubs(),
+          storage.getClubSets(),
         ]);
-        let effectiveClubs = clubs;
-        if (clubs.length === 0) {
-          for (const club of INITIAL_CLUBS) {
-            await storage.saveClub(club);
+
+        let sets = clubSets;
+        if (sets.length === 0) {
+          // 初回起動：既存クラブ or INITIAL_CLUBSからデフォルトセット作成
+          const initClubs = existingClubs.length > 0 ? existingClubs : INITIAL_CLUBS;
+          if (existingClubs.length === 0) {
+            for (const c of INITIAL_CLUBS) await storage.saveClub(c);
           }
-          effectiveClubs = INITIAL_CLUBS;
+          const defaultSet: ClubSet = {
+            id: genId(),
+            name: '現在のセッティング',
+            clubs: initClubs,
+            createdAt: new Date().toISOString(),
+          };
+          await storage.saveClubSet(defaultSet);
+          sets = [defaultSet];
         }
-        dispatch({ type: 'LOAD', payload: { courses, rounds, clubs: effectiveClubs } });
-      } catch (e) {
+
+        const storedId = localStorage.getItem(ACTIVE_SET_KEY);
+        const activeId = sets.find(s => s.id === storedId)?.id ?? sets[0].id;
+        if (!storedId) localStorage.setItem(ACTIVE_SET_KEY, activeId);
+
+        dispatch({ type: 'LOAD', payload: { courses, rounds, clubSets: sets, activeClubSetId: activeId } });
+      } catch {
         dispatch({ type: 'SET_ERROR', payload: 'データの読み込みに失敗しました' });
         dispatch({ type: 'SET_LOADING', payload: false });
       }
@@ -137,14 +178,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'DELETE_ROUND', payload: id });
   }, []);
 
+  // クラブ保存：アクティブセットの clubs 配列を更新
   const saveClub = useCallback(async (club: Club) => {
-    await storage.saveClub(club);
-    dispatch({ type: 'UPSERT_CLUB', payload: club });
-  }, []);
+    const activeSet = state.clubSets.find(s => s.id === state.activeClubSetId);
+    if (!activeSet) return;
+    const updatedSet: ClubSet = {
+      ...activeSet,
+      clubs: activeSet.clubs.some(c => c.id === club.id)
+        ? activeSet.clubs.map(c => c.id === club.id ? club : c)
+        : [...activeSet.clubs, club],
+    };
+    await storage.saveClubSet(updatedSet);
+    dispatch({ type: 'UPSERT_CLUB_SET', payload: updatedSet });
+  }, [state.clubSets, state.activeClubSetId]);
 
   const deleteClub = useCallback(async (id: string) => {
-    await storage.deleteClub(id);
-    dispatch({ type: 'DELETE_CLUB', payload: id });
+    const activeSet = state.clubSets.find(s => s.id === state.activeClubSetId);
+    if (!activeSet) return;
+    const updatedSet: ClubSet = { ...activeSet, clubs: activeSet.clubs.filter(c => c.id !== id) };
+    await storage.saveClubSet(updatedSet);
+    dispatch({ type: 'UPSERT_CLUB_SET', payload: updatedSet });
+  }, [state.clubSets, state.activeClubSetId]);
+
+  const saveClubSet = useCallback(async (set: ClubSet) => {
+    await storage.saveClubSet(set);
+    dispatch({ type: 'UPSERT_CLUB_SET', payload: set });
+  }, []);
+
+  const deleteClubSet = useCallback(async (id: string) => {
+    await storage.deleteClubSet(id);
+    dispatch({ type: 'DELETE_CLUB_SET', payload: id });
+  }, []);
+
+  const setActiveClubSet = useCallback((id: string) => {
+    localStorage.setItem(ACTIVE_SET_KEY, id);
+    dispatch({ type: 'SET_ACTIVE_CLUB_SET', payload: id });
   }, []);
 
   const exportData = useCallback(async () => {
@@ -160,24 +228,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const clearAll = useCallback(async () => {
     await storage.clearAll();
-    for (const club of INITIAL_CLUBS) {
-      await storage.saveClub(club);
-    }
-    dispatch({ type: 'LOAD', payload: { courses: [], rounds: [], clubs: INITIAL_CLUBS } });
+    const defaultSet: ClubSet = {
+      id: genId(),
+      name: '現在のセッティング',
+      clubs: INITIAL_CLUBS,
+      createdAt: new Date().toISOString(),
+    };
+    await storage.saveClubSet(defaultSet);
+    localStorage.setItem(ACTIVE_SET_KEY, defaultSet.id);
+    dispatch({ type: 'LOAD', payload: { courses: [], rounds: [], clubSets: [defaultSet], activeClubSetId: defaultSet.id } });
   }, []);
 
   return (
     <AppContext.Provider value={{
       state,
-      saveCourse,
-      deleteCourse,
-      saveRound,
-      deleteRound,
-      saveClub,
-      deleteClub,
-      exportData,
-      importData,
-      clearAll,
+      saveCourse, deleteCourse,
+      saveRound, deleteRound,
+      saveClub, deleteClub,
+      saveClubSet, deleteClubSet, setActiveClubSet,
+      exportData, importData, clearAll,
     }}>
       {children}
     </AppContext.Provider>

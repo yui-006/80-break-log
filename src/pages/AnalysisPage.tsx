@@ -2,7 +2,7 @@ import { useApp } from '../context/AppContext';
 import { calcScoreStats, calcLosses, calcClubStats } from '../analytics';
 import { INITIAL_CLUBS } from '../data/initial';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   BarChart, Bar, ResponsiveContainer,
 } from 'recharts';
 import { BarChart2 } from 'lucide-react';
@@ -169,6 +169,7 @@ export function AnalysisPage() {
               <XAxis dataKey="date" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} />
               <Tooltip contentStyle={{ fontSize: 12 }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
               <Bar dataKey="Par3" fill="#3b82f6" name="Par3" />
               <Bar dataKey="Par4" fill="#22c55e" name="Par4" />
               <Bar dataKey="Par5" fill="#f59e0b" name="Par5" />
@@ -183,7 +184,8 @@ export function AnalysisPage() {
             <table className="w-full text-xs min-w-max">
               <thead>
                 <tr className="text-gray-500 border-b border-gray-100">
-                  <th className="py-1.5 text-left pr-3">日付</th>
+                  <th className="py-1.5 text-left pr-2">日付</th>
+                  <th className="py-1.5 text-left pr-3">コース</th>
                   <th className="py-1.5 px-2 text-right">Score</th>
                   <th className="py-1.5 px-2 text-right">前</th>
                   <th className="py-1.5 px-2 text-right">後</th>
@@ -197,7 +199,8 @@ export function AnalysisPage() {
                   const st = calcScoreStats(r.holes);
                   return (
                     <tr key={r.id} className="border-b border-gray-50">
-                      <td className="py-1.5 pr-3 text-gray-700">{r.date}</td>
+                      <td className="py-1.5 pr-2 text-gray-500">{r.date.slice(5)}</td>
+                      <td className="py-1.5 pr-3 text-gray-700 max-w-[80px] truncate">{r.courseName}</td>
                       <td className="py-1.5 px-2 text-right font-bold text-green-800">{st.totalScore}</td>
                       <td className="py-1.5 px-2 text-right text-gray-600">{st.frontScore}</td>
                       <td className="py-1.5 px-2 text-right text-gray-600">{st.backScore}</td>
