@@ -16,6 +16,8 @@ export const INITIAL_CLUBS: Club[] = [
   { id: 'pt',  name: 'PT',  category: 'putter' },
 ];
 
+export const CLUB_ORDER = ['1w', '3w', '7w', '5u', '6i', '7i', '8i', '9i', 'pw', '48', '52', '58', 'pt'];
+
 export const CLUBS_BY_SHOT_TYPE: Record<string, string[]> = {
   tee:      ['1w', '3w', '7w', '5u', '6i', '7i'],
   full:     ['7w', '5u', '6i', '7i', '8i', '9i', 'pw', '48'],

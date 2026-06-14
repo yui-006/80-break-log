@@ -7,7 +7,7 @@ import { SelectButtons } from '../components/ui/SelectButtons';
 import { Modal } from '../components/ui/Modal';
 import {
   CLUBS_BY_SHOT_TYPE, LIE_OPTIONS, RESULT_OPTIONS,
-  DIRECTION_OPTIONS, SHOT_TYPE_LABELS, INITIAL_CLUBS,
+  DIRECTION_OPTIONS, SHOT_TYPE_LABELS, INITIAL_CLUBS, CLUB_ORDER,
 } from '../data/initial';
 import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, TableProperties } from 'lucide-react';
 
@@ -32,29 +32,35 @@ function ShotInputModal({
   onDelete?: () => void;
   onClose: () => void;
 }) {
-  const [shotType, setShotType] = useState<ShotType | undefined>(initial.shotType);
+  const [shotTypes, setShotTypes] = useState<ShotType[]>(initial.shotTypes ?? []);
   const [clubId, setClubId] = useState(initial.clubId ?? '');
-  const [lie, setLie] = useState(initial.lie ?? '');
-  const [result, setResult] = useState(initial.result ?? '');
+  const [lies, setLies] = useState<string[]>(initial.lies ?? []);
+  const [results, setResults] = useState<string[]>(initial.results ?? []);
   const [direction, setDirection] = useState(initial.direction ?? '');
   const [distance, setDistance] = useState(initial.distance?.toString() ?? '');
   const [memo, setMemo] = useState(initial.memo ?? '');
   const [penalty, setPenalty] = useState(initial.penalty ?? 0);
 
-  const shotTypes: ShotType[] = ['tee', 'full', 'half', 'approach', 'bunker', 'putt'];
-  const availableClubIds = shotType ? (CLUBS_BY_SHOT_TYPE[shotType] ?? []) : Object.keys(CLUBS_BY_SHOT_TYPE).flatMap(k => CLUBS_BY_SHOT_TYPE[k]);
-  const availableClubs = clubs.filter(c => availableClubIds.includes(c.id));
+  const allShotTypes: ShotType[] = ['tee', 'full', 'half', 'approach', 'bunker', 'putt'];
+
+  // クラブ候補：選択中の種別すべてのunion、未選択なら全クラブ
+  const availableClubIds = shotTypes.length > 0
+    ? [...new Set(shotTypes.flatMap(t => CLUBS_BY_SHOT_TYPE[t] ?? []))]
+    : CLUB_ORDER;
+  const availableClubs = clubs
+    .filter(c => availableClubIds.includes(c.id))
+    .sort((a, b) => CLUB_ORDER.indexOf(a.id) - CLUB_ORDER.indexOf(b.id));
 
   function save() {
     const shot: Shot = {
       id: initial.id ?? genId(),
       roundHoleId: holeId,
       shotNo,
-      shotType,
+      shotTypes: shotTypes.length > 0 ? shotTypes : undefined,
       clubId: clubId || undefined,
       distance: distance ? Number(distance) : undefined,
-      lie: lie || undefined,
-      result: result || undefined,
+      lies: lies.length > 0 ? lies : undefined,
+      results: results.length > 0 ? results : undefined,
       direction: direction || undefined,
       penalty: penalty || undefined,
       memo: memo || undefined,
@@ -65,17 +71,22 @@ function ShotInputModal({
   return (
     <Modal title={`ショット ${shotNo}`} onClose={onClose}>
       <div className="space-y-5 pt-4">
-        {/* Shot type */}
+        {/* Shot type（複数選択可） */}
         <div>
-          <p className="text-sm font-bold text-gray-700 mb-2">種別</p>
+          <p className="text-sm font-bold text-gray-700 mb-2">種別 <span className="font-normal text-gray-400 text-xs">複数選択可</span></p>
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
-            {shotTypes.map(t => (
+            {allShotTypes.map(t => (
               <button
                 key={t}
                 type="button"
-                onClick={() => { setShotType(t); setClubId(''); }}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium ${
-                  shotType === t ? 'bg-green-800 text-white' : 'bg-gray-100 text-gray-700'
+                onClick={() => {
+                  setShotTypes(prev =>
+                    prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]
+                  );
+                  setClubId(''); // 種別変更時はクラブリセット
+                }}
+                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  shotTypes.includes(t) ? 'bg-green-800 text-white' : 'bg-gray-100 text-gray-700'
                 }`}
               >
                 {SHOT_TYPE_LABELS[t]}
@@ -84,39 +95,61 @@ function ShotInputModal({
           </div>
         </div>
 
-        {/* Club */}
+        {/* Club（W→U→アイアン→ウェッジ→パター順） */}
         <div>
           <p className="text-sm font-bold text-gray-700 mb-2">クラブ</p>
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+            {availableClubs.map(c => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setClubId(prev => prev === c.id ? '' : c.id)}
+                className={`flex-shrink-0 px-3 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
+                  clubId === c.id ? 'bg-green-800 text-white' : 'bg-gray-100 text-gray-700'
+                }`}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ライ（複数選択可） */}
+        <div>
+          <p className="text-sm font-bold text-gray-700 mb-2">ライ <span className="font-normal text-gray-400 text-xs">複数選択可</span></p>
           <SelectButtons
-            options={availableClubs.map(c => c.name)}
-            value={clubs.find(c => c.id === clubId)?.name}
-            onChange={name => {
-              const c = clubs.find(cl => cl.name === name);
-              setClubId(c?.id === clubId ? '' : (c?.id ?? ''));
-            }}
-            cols={4}
+            options={LIE_OPTIONS}
+            value={lies}
+            onChange={v => setLies(v as string[])}
+            cols={3}
+            multiSelect
           />
         </div>
 
-        {/* Lie */}
+        {/* 結果（複数選択可） */}
         <div>
-          <p className="text-sm font-bold text-gray-700 mb-2">ライ</p>
-          <SelectButtons options={LIE_OPTIONS} value={lie} onChange={setLie} cols={3} />
+          <p className="text-sm font-bold text-gray-700 mb-2">結果 <span className="font-normal text-gray-400 text-xs">複数選択可</span></p>
+          <SelectButtons
+            options={RESULT_OPTIONS}
+            value={results}
+            onChange={v => setResults(v as string[])}
+            cols={3}
+            multiSelect
+          />
         </div>
 
-        {/* Result */}
-        <div>
-          <p className="text-sm font-bold text-gray-700 mb-2">結果</p>
-          <SelectButtons options={RESULT_OPTIONS} value={result} onChange={setResult} cols={3} />
-        </div>
-
-        {/* Direction */}
+        {/* 方向（単一選択） */}
         <div>
           <p className="text-sm font-bold text-gray-700 mb-2">方向</p>
-          <SelectButtons options={DIRECTION_OPTIONS} value={direction} onChange={setDirection} cols={3} />
+          <SelectButtons
+            options={DIRECTION_OPTIONS}
+            value={direction}
+            onChange={v => setDirection(v as string)}
+            cols={3}
+          />
         </div>
 
-        {/* Distance & Penalty */}
+        {/* 距離 & ペナルティ */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-sm font-medium text-gray-700">距離 (y)</label>
@@ -138,7 +171,7 @@ function ShotInputModal({
           </div>
         </div>
 
-        {/* Memo */}
+        {/* メモ */}
         <div>
           <label className="text-sm font-medium text-gray-700">メモ</label>
           <input
@@ -251,7 +284,8 @@ export function HoleInputPage() {
       {/* Header */}
       <div className="bg-green-800 text-white px-4 pt-12 pb-4">
         <div className="flex items-center justify-between mb-1">
-          <p className="text-green-200 text-xs">{round.courseName}</p>
+          {/* ▼ 日付を追加 */}
+          <p className="text-green-200 text-xs">{round.date} · {round.courseName}</p>
           <button
             onClick={() => navigate(`/rounds/${roundId}/scorecard`)}
             className="flex items-center gap-1 text-green-200 text-xs"
@@ -274,7 +308,6 @@ export function HoleInputPage() {
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {/* Score card */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
-          {/* Score */}
           <div className="mb-1">
             <Counter
               label="スコア"
@@ -336,23 +369,25 @@ export function HoleInputPage() {
                     <span className="text-xs text-gray-400 font-mono w-4">{i + 1}</span>
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        {shot.shotType && (
-                          <span className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full font-medium">
-                            {SHOT_TYPE_LABELS[shot.shotType]}
+                        {shot.shotTypes?.map(t => (
+                          <span key={t} className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full font-medium">
+                            {SHOT_TYPE_LABELS[t]}
                           </span>
-                        )}
+                        ))}
                         {club && <span className="text-sm font-bold text-gray-900">{club.name}</span>}
                         {shot.distance && <span className="text-xs text-gray-500">{shot.distance}y</span>}
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        {shot.lie && <span className="text-xs text-gray-500">{shot.lie}</span>}
-                        {shot.result && (
-                          <span className={`text-xs font-medium ${
-                            ['ナイス', '普通', 'ナイスアウト'].includes(shot.result) ? 'text-green-700' : 'text-red-500'
+                        {shot.lies?.map(l => (
+                          <span key={l} className="text-xs text-gray-500">{l}</span>
+                        ))}
+                        {shot.results?.map(r => (
+                          <span key={r} className={`text-xs font-medium ${
+                            ['ナイス', '普通', 'ナイスアウト'].includes(r) ? 'text-green-700' : 'text-red-500'
                           }`}>
-                            {shot.result}
+                            {r}
                           </span>
-                        )}
+                        ))}
                         {shot.direction && shot.direction !== '真っ直ぐ' && (
                           <span className="text-xs text-orange-500">{shot.direction}</span>
                         )}
@@ -378,16 +413,14 @@ export function HoleInputPage() {
         >
           <ChevronLeft size={22} />
         </button>
-        <div className="flex-1 grid grid-cols-4 gap-1">
-          {round.holes.map(h => (
+        <div className="flex-1 grid grid-cols-9 gap-1">
+          {round.holes.slice(0, 9).map(h => (
             <button
               key={h.holeNo}
               onClick={() => navigateHole(h.holeNo)}
               className={`py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                h.holeNo === holeNo
-                  ? 'bg-green-800 text-white'
-                  : h.score != null
-                  ? 'bg-green-100 text-green-800'
+                h.holeNo === holeNo ? 'bg-green-800 text-white'
+                  : h.score != null ? 'bg-green-100 text-green-800'
                   : 'bg-gray-100 text-gray-500'
               }`}
             >
@@ -411,6 +444,26 @@ export function HoleInputPage() {
           </button>
         )}
       </div>
+      {/* Back 9 nav */}
+      {round.holes.length > 9 && (
+        <div className="bg-white border-t border-gray-100 px-4 pb-2">
+          <div className="grid grid-cols-9 gap-1">
+            {round.holes.slice(9).map(h => (
+              <button
+                key={h.holeNo}
+                onClick={() => navigateHole(h.holeNo)}
+                className={`py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  h.holeNo === holeNo ? 'bg-green-800 text-white'
+                    : h.score != null ? 'bg-green-100 text-green-800'
+                    : 'bg-gray-100 text-gray-500'
+                }`}
+              >
+                {h.holeNo}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Shot modal */}
       {shotModal && (

@@ -206,20 +206,20 @@ export function ScoreCardPage() {
                     {h.shots.map((s, i) => {
                       const club = clubs.find(c => c.id === s.clubId);
                       return (
-                        <div key={s.id} className="flex items-center gap-2 text-xs">
+                        <div key={s.id} className="flex items-center gap-2 text-xs flex-wrap">
                           <span className="text-gray-400 w-3">{i + 1}</span>
-                          {s.shotType && (
-                            <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
-                              {SHOT_TYPE_LABELS[s.shotType]}
+                          {s.shotTypes?.map(t => (
+                            <span key={t} className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+                              {SHOT_TYPE_LABELS[t]}
                             </span>
-                          )}
+                          ))}
                           {club && <span className="font-medium text-gray-800">{club.name}</span>}
                           {s.distance && <span className="text-gray-500">{s.distance}y</span>}
-                          {s.result && (
-                            <span className={['ナイス', '普通', 'ナイスアウト'].includes(s.result) ? 'text-green-700' : 'text-red-500'}>
-                              {s.result}
+                          {s.results?.map(r => (
+                            <span key={r} className={['ナイス', '普通', 'ナイスアウト'].includes(r) ? 'text-green-700' : 'text-red-500'}>
+                              {r}
                             </span>
-                          )}
+                          ))}
                           {s.direction && s.direction !== '真っ直ぐ' && (
                             <span className="text-orange-500">{s.direction}</span>
                           )}

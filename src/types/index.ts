@@ -76,11 +76,11 @@ export type Shot = {
   id: string;
   roundHoleId: string;
   shotNo: number;
-  shotType?: ShotType;
+  shotTypes?: ShotType[];
   clubId?: string;
   distance?: number;
-  lie?: string;
-  result?: string;
+  lies?: string[];
+  results?: string[];
   direction?: string;
   penalty?: number;
   memo?: string;

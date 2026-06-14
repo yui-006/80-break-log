@@ -2,7 +2,6 @@ import type { Round, RoundHole, Shot, LossCategory, ScoreStats, PracticeItem } f
 
 const MISS_RESULTS = new Set(['右', '左', 'ショート', 'オーバー', 'トップ', 'チョロ', 'ダフリ', 'OB', 'ペナルティ', 'バンカー', 'ホームラン', '1回で出ない']);
 const IRON_CLUBS = new Set(['6i', '7i', '8i', '9i', 'pw']);
-const SLOPE_LIES = new Set(['左足上がり', '左足下がり', 'つま先上がり', 'つま先下がり', 'ラフ']);
 
 export function calcScoreStats(holes: RoundHole[]): ScoreStats {
   const scored = holes.filter(h => h.score !== undefined);
@@ -70,26 +69,33 @@ export function calcLosses(rounds: Round[]): LossCategory[] {
   const entries = allShots(rounds);
   const recentHoles = rounds.flatMap(r => r.holes);
 
+  const hasResult = (shot: Shot, ...vals: string[]) =>
+    shot.results?.some(r => vals.includes(r)) ?? false;
+  const hasType = (shot: Shot, ...types: string[]) =>
+    shot.shotTypes?.some(t => types.includes(t)) ?? false;
+  const hasLie = (shot: Shot, ...lies: string[]) =>
+    shot.lies?.some(l => lies.includes(l)) ?? false;
+
   const obPenaltyCount =
     entries.filter(({ shot }) =>
-      shot.result === 'OB' || shot.result === 'ペナルティ' || (shot.penalty ?? 0) > 0
+      hasResult(shot, 'OB', 'ペナルティ') || (shot.penalty ?? 0) > 0
     ).length +
     recentHoles.reduce((s, h) => s + (h.ob ?? 0) + (h.penalty ?? 0), 0);
 
   const threePuttCount = recentHoles.filter(h => (h.putts ?? 0) >= 3).length;
 
   const halfMissCount = entries.filter(({ shot }) =>
-    shot.shotType === 'half' && ['ショート', 'オーバー', 'トップ', 'ダフリ'].includes(shot.result ?? '')
+    hasType(shot, 'half') && hasResult(shot, 'ショート', 'オーバー', 'トップ', 'ダフリ')
   ).length;
 
   const approachMissCount = entries.filter(({ shot }) =>
-    shot.shotType === 'approach' && ['チョロ', 'トップ', 'ダフリ', 'オーバー', 'ショート'].includes(shot.result ?? '')
+    hasType(shot, 'approach') && hasResult(shot, 'チョロ', 'トップ', 'ダフリ', 'オーバー', 'ショート')
   ).length;
 
   const woodMissCount = entries.filter(({ shot }) =>
     ['7w', '5u'].includes(shot.clubId ?? '') &&
-    shot.shotType === 'full' &&
-    ['チョロ', 'トップ', '右', '左', 'ダフリ'].includes(shot.result ?? '')
+    hasType(shot, 'full') &&
+    hasResult(shot, 'チョロ', 'トップ', '右', '左', 'ダフリ')
   ).length;
 
   const ironDirMissCount = entries.filter(({ shot }) =>
@@ -98,15 +104,16 @@ export function calcLosses(rounds: Round[]): LossCategory[] {
   ).length;
 
   const slopeMissCount = entries.filter(({ shot }) =>
-    SLOPE_LIES.has(shot.lie ?? '') && MISS_RESULTS.has(shot.result ?? '')
+    hasLie(shot, '左足上がり', '左足下がり', 'つま先上がり', 'つま先下がり', 'ラフ') &&
+    (shot.results?.some(r => MISS_RESULTS.has(r)) ?? false)
   ).length;
 
   const bunkerMissCount = entries.filter(({ shot }) =>
-    shot.shotType === 'bunker' && ['1回で出ない', 'ホームラン', 'オーバー'].includes(shot.result ?? '')
+    hasType(shot, 'bunker') && hasResult(shot, '1回で出ない', 'ホームラン', 'オーバー')
   ).length;
 
   const shortPuttMissCount = entries.filter(({ shot }) =>
-    shot.shotType === 'putt' && (shot.distance ?? 0) <= 2 && ['ショート', '右', '左'].includes(shot.result ?? '')
+    hasType(shot, 'putt') && (shot.distance ?? 0) <= 2 && hasResult(shot, 'ショート', '右', '左')
   ).length;
 
   const raw: Array<{ key: string; label: string; count: number; lossPerCount: number }> = [
@@ -203,7 +210,7 @@ export function calcClubStats(rounds: Round[]): { clubId: string; total: number;
         if (!shot.clubId) continue;
         const cur = map.get(shot.clubId) ?? { total: 0, missCount: 0 };
         cur.total++;
-        if (shot.result && MISS_RESULTS.has(shot.result)) cur.missCount++;
+        if (shot.results?.some(r => MISS_RESULTS.has(r))) cur.missCount++;
         map.set(shot.clubId, cur);
       }
     }
