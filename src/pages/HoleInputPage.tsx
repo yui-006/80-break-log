@@ -330,6 +330,17 @@ export function HoleInputPage() {
           <div className="border-t border-gray-100 pt-2">
             <Counter label="パット数" value={hole.putts ?? 0} onChange={v => setField('putts', v || undefined)} />
           </div>
+          <div className="border-t border-gray-100 pt-3 pb-1 flex items-center justify-between">
+            <span className="text-gray-700 font-medium text-base">1打目距離 (y)</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={hole.puttDistance ?? ''}
+              onChange={e => setField('puttDistance', e.target.value ? Number(e.target.value) : undefined)}
+              className="w-24 border border-gray-200 rounded-xl px-3 py-2 text-base text-right font-bold"
+              placeholder="−"
+            />
+          </div>
           <div className="border-t border-gray-100 pt-2 grid grid-cols-2 gap-2">
             <Counter label="OB" value={hole.ob ?? 0} onChange={v => setField('ob', v)} compact />
             <Counter label="ペナルティ" value={hole.penalty ?? 0} onChange={v => setField('penalty', v)} compact />

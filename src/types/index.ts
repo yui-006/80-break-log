@@ -66,6 +66,7 @@ export type RoundHole = {
   yardage?: number;
   score?: number;
   putts?: number;
+  puttDistance?: number;
   ob?: number;
   penalty?: number;
   memo?: string;
