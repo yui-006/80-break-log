@@ -34,7 +34,7 @@ export const LIE_OPTIONS = [
 
 export const RESULT_CATEGORIES: { label: string; options: string[] }[] = [
   { label: '距離', options: ['狙い通り', 'ショート', 'オーバー', 'あまり飛ばない'] },
-  { label: '方向', options: ['右', '左'] },
+  { label: '方向', options: ['まっすぐ', '右', '左'] },
   { label: '打感', options: ['ナイス', '普通', 'トップ', 'ハーフトップ', 'ダフリ', 'チョロ', '当たりそこない', 'シャンク'] },
   { label: 'その他', options: ['OB', 'ペナルティ', 'ナイスアウト', 'ホームラン', '1回で出ない'] },
 ];
