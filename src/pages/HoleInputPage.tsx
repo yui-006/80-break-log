@@ -6,7 +6,7 @@ import { Counter } from '../components/ui/Counter';
 import { SelectButtons } from '../components/ui/SelectButtons';
 import { Modal } from '../components/ui/Modal';
 import {
-  LIE_OPTIONS, RESULT_OPTIONS,
+  LIE_OPTIONS, RESULT_CATEGORIES,
   DIRECTION_OPTIONS, SHOT_TYPE_LABELS, INITIAL_CLUBS, CLUB_ORDER,
 } from '../data/initial';
 import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, TableProperties } from 'lucide-react';
@@ -121,16 +121,23 @@ function ShotInputModal({
           />
         </div>
 
-        {/* 結果（複数選択可） */}
+        {/* 結果（カテゴリ別・複数選択可） */}
         <div>
-          <p className="text-sm font-bold text-gray-700 mb-2">結果 <span className="font-normal text-gray-400 text-xs">複数選択可</span></p>
-          <SelectButtons
-            options={RESULT_OPTIONS}
-            value={results}
-            onChange={v => setResults(v as string[])}
-            cols={3}
-            multiSelect
-          />
+          <p className="text-sm font-bold text-gray-700 mb-3">結果 <span className="font-normal text-gray-400 text-xs">複数選択可</span></p>
+          <div className="space-y-3">
+            {RESULT_CATEGORIES.map(cat => (
+              <div key={cat.label}>
+                <p className="text-xs font-medium text-gray-400 mb-1.5">{cat.label}</p>
+                <SelectButtons
+                  options={cat.options}
+                  value={results}
+                  onChange={v => setResults(v as string[])}
+                  cols={4}
+                  multiSelect
+                />
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* 方向（単一選択） */}

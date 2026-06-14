@@ -1,6 +1,6 @@
 import type { Round, RoundHole, Shot, LossCategory, ScoreStats, PracticeItem } from '../types';
 
-const MISS_RESULTS = new Set(['右', '左', 'ショート', 'オーバー', 'トップ', 'ハーフトップ', 'チョロ', 'ダフリ', '当たりそこない', 'あまり飛ばない', 'OB', 'ペナルティ', 'ホームラン', '1回で出ない']);
+const MISS_RESULTS = new Set(['右', '左', 'ショート', 'オーバー', 'トップ', 'ハーフトップ', 'チョロ', 'ダフリ', '当たりそこない', 'あまり飛ばない', 'シャンク', 'OB', 'ペナルティ', 'ホームラン', '1回で出ない']);
 const IRON_CLUBS = new Set(['6i', '7i', '8i', '9i', 'pw']);
 
 export function calcScoreStats(holes: RoundHole[]): ScoreStats {
