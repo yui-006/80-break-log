@@ -15,17 +15,17 @@ export function Modal({ title, onClose, children }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
+      <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative bg-white rounded-t-3xl max-h-[92dvh] flex flex-col"
+        className="relative bg-zinc-900 rounded-t-3xl max-h-[92dvh] flex flex-col border-t border-zinc-800"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 flex-shrink-0">
-          <h2 className="text-lg font-bold text-gray-900">{title}</h2>
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-zinc-800 flex-shrink-0">
+          <h2 className="text-lg font-bold text-white">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-full text-gray-500 active:bg-gray-100"
+            className="p-2 rounded-full text-zinc-400 active:bg-zinc-800"
           >
             <X size={20} />
           </button>

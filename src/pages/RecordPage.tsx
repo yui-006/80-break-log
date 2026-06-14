@@ -33,6 +33,9 @@ function buildRoundHoles(course: Course, teeName: string): RoundHole[] {
   }));
 }
 
+const INPUT_CLS = 'mt-1 w-full border border-zinc-700 bg-zinc-800 text-white rounded-xl px-3 py-2.5 text-base placeholder:text-zinc-500';
+const LABEL_CLS = 'text-sm font-medium text-zinc-300';
+
 function RoundStartModal({ onClose }: { onClose: () => void }) {
   const { state, saveRound } = useApp();
   const navigate = useNavigate();
@@ -73,94 +76,52 @@ function RoundStartModal({ onClose }: { onClose: () => void }) {
     <Modal title="ラウンド開始" onClose={onClose}>
       <div className="space-y-4 pt-4">
         <div>
-          <label className="text-sm font-medium text-gray-700">コース *</label>
-          <select
-            value={courseId}
-            onChange={e => setCourseId(e.target.value)}
-            className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base bg-white"
-          >
+          <label className={LABEL_CLS}>コース *</label>
+          <select value={courseId} onChange={e => setCourseId(e.target.value)} className={INPUT_CLS}>
             <option value="">コースを選択</option>
-            {state.courses.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
+            {state.courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           {state.courses.length === 0 && (
-            <p className="text-xs text-red-500 mt-1">先にコースを登録してください</p>
+            <p className="text-xs text-red-400 mt-1">先にコースを登録してください</p>
           )}
         </div>
-
         <div>
-          <label className="text-sm font-medium text-gray-700">日付</label>
-          <input
-            type="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-            className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base"
-          />
+          <label className={LABEL_CLS}>日付</label>
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} className={INPUT_CLS} />
         </div>
-
         <div>
-          <label className="text-sm font-medium text-gray-700 block mb-2">ティー</label>
+          <label className={`${LABEL_CLS} block mb-2`}>ティー</label>
           <div className="flex gap-2 flex-wrap">
             {teeNames.map(t => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTeeName(t)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium ${
-                  teeName === t ? 'bg-green-800 text-white' : 'bg-gray-100 text-gray-700'
-                }`}
-              >
+              <button key={t} type="button" onClick={() => setTeeName(t)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium ${teeName === t ? 'bg-lime-400 text-black' : 'bg-zinc-800 text-zinc-300'}`}>
                 {t}
               </button>
             ))}
           </div>
         </div>
-
         <div>
-          <label className="text-sm font-medium text-gray-700">目標スコア</label>
-          <input
-            type="number"
-            value={targetScore}
-            onChange={e => setTargetScore(e.target.value)}
-            className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base"
-            placeholder="例: 90"
-          />
+          <label className={LABEL_CLS}>目標スコア</label>
+          <input type="number" value={targetScore} onChange={e => setTargetScore(e.target.value)} className={INPUT_CLS} placeholder="例: 90" />
         </div>
-
         <div>
-          <label className="text-sm font-medium text-gray-700 block mb-2">天気</label>
+          <label className={`${LABEL_CLS} block mb-2`}>天気</label>
           <div className="flex gap-2 flex-wrap">
             {WEATHER_OPTIONS.map(w => (
-              <button
-                key={w}
-                type="button"
-                onClick={() => setWeather(weather === w ? '' : w)}
-                className={`px-3 py-1.5 rounded-xl text-sm ${
-                  weather === w ? 'bg-green-800 text-white' : 'bg-gray-100 text-gray-700'
-                }`}
-              >
+              <button key={w} type="button" onClick={() => setWeather(weather === w ? '' : w)}
+                className={`px-3 py-1.5 rounded-xl text-sm ${weather === w ? 'bg-lime-400 text-black' : 'bg-zinc-800 text-zinc-300'}`}>
                 {w}
               </button>
             ))}
           </div>
         </div>
-
         <div>
-          <label className="text-sm font-medium text-gray-700">メモ</label>
-          <textarea
-            value={memo}
-            onChange={e => setMemo(e.target.value)}
-            rows={2}
-            className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base resize-none"
-          />
+          <label className={LABEL_CLS}>メモ</label>
+          <textarea value={memo} onChange={e => setMemo(e.target.value)} rows={2}
+            className={`${INPUT_CLS} resize-none`} />
         </div>
-
-        <button
-          onClick={start}
-          disabled={!courseId}
-          className="w-full bg-green-800 text-white py-4 rounded-2xl font-bold text-lg disabled:opacity-40 active:bg-green-900"
-        >
+        <button onClick={start} disabled={!courseId}
+          className="w-full bg-lime-400 text-black py-4 rounded-2xl font-bold text-lg disabled:opacity-40 active:bg-lime-300">
           ラウンド開始
         </button>
       </div>
@@ -188,40 +149,33 @@ export function RecordPage() {
   }
 
   return (
-    <div className="min-h-full bg-gray-50">
-      <div className="bg-green-800 text-white px-5 pt-12 pb-6 flex items-end justify-between">
-        <h1 className="text-2xl font-bold">ラウンド記録</h1>
-        <button
-          onClick={() => setShowStart(true)}
-          className="flex items-center gap-1 bg-white text-green-800 px-3 py-2 rounded-xl text-sm font-bold active:bg-green-50"
-        >
+    <div className="min-h-full bg-[#0f0f0f]">
+      <div className="px-5 pt-12 pb-5 flex items-end justify-between">
+        <h1 className="text-2xl font-bold text-white">ラウンド記録</h1>
+        <button onClick={() => setShowStart(true)}
+          className="flex items-center gap-1 bg-lime-400 text-black px-3 py-2 rounded-xl text-sm font-bold active:bg-lime-300">
           <Plus size={14} /> 新しいラウンド
         </button>
       </div>
 
-      <div className="px-4 py-4 space-y-4">
-        {/* Recording rounds */}
+      <div className="px-4 pb-4 space-y-4">
         {recordingRounds.length > 0 && (
           <div>
-            <h2 className="text-sm font-bold text-gray-500 mb-2">記録中</h2>
+            <h2 className="text-xs font-bold text-zinc-500 mb-2 tracking-wide uppercase">記録中</h2>
             {recordingRounds.map(r => (
-              <Card key={r.id} className="p-4 border-2 border-green-400">
+              <Card key={r.id} className="p-4 border border-lime-400/40">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-bold text-gray-900">{r.courseName}</p>
-                    <p className="text-xs text-gray-500">{r.date} / {r.teeName}</p>
+                    <p className="font-bold text-white">{r.courseName}</p>
+                    <p className="text-xs text-zinc-500">{r.date} / {r.teeName}</p>
                   </div>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => navigate(`/rounds/${r.id}/hole/1`)}
-                      className="bg-green-800 text-white px-3 py-2 rounded-xl text-sm font-bold active:bg-green-900"
-                    >
+                    <button onClick={() => navigate(`/rounds/${r.id}/hole/1`)}
+                      className="bg-lime-400 text-black px-3 py-2 rounded-xl text-sm font-bold active:bg-lime-300">
                       続ける
                     </button>
-                    <button
-                      onClick={() => completeRound(r)}
-                      className="bg-gray-100 text-gray-700 px-3 py-2 rounded-xl text-sm active:bg-gray-200"
-                    >
+                    <button onClick={() => completeRound(r)}
+                      className="bg-zinc-800 text-zinc-300 px-3 py-2 rounded-xl text-sm active:bg-zinc-700">
                       完了
                     </button>
                   </div>
@@ -231,10 +185,9 @@ export function RecordPage() {
           </div>
         )}
 
-        {/* Completed rounds */}
         {completedRounds.length === 0 && recordingRounds.length === 0 && (
-          <div className="text-center py-12 text-gray-400">
-            <ClipboardList size={40} className="mx-auto mb-2 text-gray-300" />
+          <div className="text-center py-16 text-zinc-600">
+            <ClipboardList size={40} className="mx-auto mb-2 text-zinc-700" />
             <p>まだラウンドがありません</p>
           </div>
         )}
@@ -242,7 +195,7 @@ export function RecordPage() {
         {completedRounds.length > 0 && (
           <div>
             {recordingRounds.length > 0 && (
-              <h2 className="text-sm font-bold text-gray-500 mb-2">完了済み</h2>
+              <h2 className="text-xs font-bold text-zinc-500 mb-2 tracking-wide uppercase">完了済み</h2>
             )}
             <div className="space-y-2">
               {completedRounds.map(r => {
@@ -250,28 +203,18 @@ export function RecordPage() {
                 return (
                   <Card key={r.id} className="p-4">
                     <div className="flex items-center justify-between">
-                      <div
-                        className="flex-1 min-w-0 cursor-pointer"
-                        onClick={() => navigate(`/rounds/${r.id}/scorecard`)}
-                      >
-                        <p className="font-bold text-gray-900 truncate">{r.courseName}</p>
-                        <p className="text-xs text-gray-500">{r.date} / {r.teeName}</p>
+                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/rounds/${r.id}/scorecard`)}>
+                        <p className="font-bold text-white truncate">{r.courseName}</p>
+                        <p className="text-xs text-zinc-500">{r.date} / {r.teeName}</p>
                         <div className="flex gap-3 mt-1">
-                          <span className="text-sm font-bold text-green-800">{stats.totalScore}打</span>
-                          <span className="text-xs text-gray-500">{stats.totalPutts}パット</span>
-                          {stats.totalOB > 0 && <span className="text-xs text-red-500">OB {stats.totalOB}</span>}
+                          <span className="text-sm font-bold text-lime-400">{stats.totalScore}打</span>
+                          <span className="text-xs text-zinc-500">{stats.totalPutts}パット</span>
+                          {stats.totalOB > 0 && <span className="text-xs text-red-400">OB {stats.totalOB}</span>}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <ChevronRight
-                          size={18}
-                          className="text-gray-300 cursor-pointer"
-                          onClick={() => navigate(`/rounds/${r.id}/scorecard`)}
-                        />
-                        <button
-                          onClick={() => handleDelete(r.id)}
-                          className="p-1.5 text-gray-400 active:text-red-500"
-                        >
+                        <ChevronRight size={18} className="text-zinc-700 cursor-pointer" onClick={() => navigate(`/rounds/${r.id}/scorecard`)} />
+                        <button onClick={() => handleDelete(r.id)} className="p-1.5 text-zinc-600 active:text-red-400">
                           <Trash2 size={16} />
                         </button>
                       </div>

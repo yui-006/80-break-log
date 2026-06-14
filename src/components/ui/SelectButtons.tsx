@@ -35,8 +35,8 @@ export function SelectButtons({ options, value, onChange, cols = 3, scrollX = fa
             onClick={() => handleClick(opt)}
             className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
               isSelected(value, opt)
-                ? 'bg-green-800 text-white'
-                : 'bg-gray-100 text-gray-700 active:bg-gray-200'
+                ? 'bg-lime-400 text-black'
+                : 'bg-zinc-800 text-zinc-300 active:bg-zinc-700'
             }`}
           >
             {opt}
@@ -57,8 +57,8 @@ export function SelectButtons({ options, value, onChange, cols = 3, scrollX = fa
           onClick={() => handleClick(opt)}
           className={`py-2 px-1 rounded-xl text-sm font-medium transition-colors ${
             isSelected(value, opt)
-              ? 'bg-green-800 text-white'
-              : 'bg-gray-100 text-gray-700 active:bg-gray-200'
+              ? 'bg-lime-400 text-black'
+              : 'bg-zinc-800 text-zinc-300 active:bg-zinc-700'
           }`}
         >
           {opt}

@@ -1,8 +1,30 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { calcScoreStats, calcLosses } from '../analytics';
-import { Card } from '../components/ui/Card';
-import { Flag, PlayCircle, BarChart2, ChevronRight } from 'lucide-react';
+import { Bell, Flag, ChevronRight, Play } from 'lucide-react';
+
+function ScoreCircle({ score, par }: { score: number; par: number }) {
+  const r = 54;
+  const circ = 2 * Math.PI * r;
+  const fill = Math.max(0.05, Math.min(0.95, (108 - score) / 36));
+  const diff = score - par;
+  return (
+    <div className="relative w-40 h-40 flex items-center justify-center">
+      <svg className="absolute inset-0 -rotate-90" width="160" height="160" viewBox="0 0 160 160">
+        <circle cx="80" cy="80" r={r} fill="none" stroke="#27272a" strokeWidth="10" />
+        <circle cx="80" cy="80" r={r} fill="none" stroke="#a3e635" strokeWidth="10"
+          strokeDasharray={`${circ * fill} ${circ * (1 - fill)}`}
+          strokeLinecap="round" />
+      </svg>
+      <div className="text-center">
+        <p className="text-6xl font-black text-white leading-none">{score}</p>
+        <p className="text-sm font-bold text-zinc-400 mt-1">
+          ({diff >= 0 ? `+${diff}` : diff})
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export function HomePage() {
   const { state } = useApp();
@@ -15,141 +37,141 @@ export function HomePage() {
   const recordingRound = rounds.find(r => r.status === 'recording');
   const latest = completedRounds[0];
   const latestStats = latest ? calcScoreStats(latest.holes) : null;
-  const latestLosses = latest ? calcLosses([latest]).slice(0, 3) : [];
+  const losses = latest ? calcLosses(completedRounds.slice(0, 3)).filter(l => l.count > 0).slice(0, 5) : [];
 
   return (
-    <div className="min-h-full bg-gray-50">
+    <div className="min-h-full bg-[#0f0f0f]">
       {/* Header */}
-      <div className="bg-green-800 text-white px-5 pt-12 pb-6">
-        <p className="text-green-200 text-sm font-medium">80 Break Log</p>
-        <h1 className="text-2xl font-bold mt-1">ダッシュボード</h1>
+      <div className="px-5 pt-12 pb-4 flex items-center justify-between">
+        <span className="text-white text-xl font-black tracking-widest">80 BREAK LOG</span>
+        <button className="text-zinc-400 active:text-white">
+          <Bell size={22} />
+        </button>
       </div>
 
-      <div className="px-4 py-4 space-y-4">
+      <div className="px-4 space-y-4 pb-6">
         {/* Recording round banner */}
         {recordingRound && (
-          <Card
-            className="border-2 border-green-600 p-4"
+          <div
+            className="bg-lime-400/10 border border-lime-400/40 rounded-2xl p-4 flex items-center justify-between cursor-pointer active:opacity-80"
             onClick={() => navigate(`/rounds/${recordingRound.id}/hole/1`)}
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-green-700 font-medium">記録中</p>
-                <p className="font-bold text-gray-900">{recordingRound.courseName}</p>
-                <p className="text-sm text-gray-500">{recordingRound.date}</p>
-              </div>
-              <div className="flex items-center gap-1 bg-green-800 text-white px-3 py-2 rounded-xl text-sm font-bold">
-                続きを入力
-                <ChevronRight size={16} />
-              </div>
+            <div>
+              <p className="text-lime-400 text-xs font-bold tracking-wide uppercase">記録中</p>
+              <p className="font-bold text-white mt-0.5">{recordingRound.courseName}</p>
+              <p className="text-zinc-500 text-xs">{recordingRound.date}</p>
             </div>
-          </Card>
+            <div className="flex items-center gap-1 bg-lime-400 text-black px-3 py-2 rounded-xl text-sm font-bold">
+              続ける <ChevronRight size={14} />
+            </div>
+          </div>
         )}
 
-        {/* Latest round stats */}
+        {/* Latest round */}
         {latestStats ? (
-          <Card className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-xs text-gray-500">{latest.date} / {latest.courseName}</p>
-                <p className="text-sm text-gray-500">{latest.teeName ?? ''}</p>
-              </div>
+          <div className="bg-zinc-900 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-zinc-500 text-xs font-medium tracking-wide uppercase">最新ラウンド</p>
               <button
                 onClick={() => navigate(`/rounds/${latest.id}/scorecard`)}
-                className="text-green-700 text-xs font-medium"
+                className="text-lime-400 text-xs font-medium"
               >
                 詳細 →
               </button>
             </div>
-            <div className="flex gap-4 justify-around">
+            <p className="text-zinc-300 text-sm mb-5">{latest.date} · {latest.courseName}</p>
+
+            <div className="flex justify-center mb-5">
+              <ScoreCircle score={latestStats.totalScore} par={latestStats.totalPar} />
+            </div>
+
+            <div className="flex justify-around border-t border-zinc-800 pt-4">
               <div className="text-center">
-                <p className="text-3xl font-bold text-green-800">{latestStats.totalScore}</p>
-                <p className="text-xs text-gray-500">スコア</p>
+                <p className="text-2xl font-bold text-white">{latestStats.totalPutts}</p>
+                <p className="text-xs text-zinc-500 mt-0.5">パット</p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-gray-800">{latestStats.totalPutts}</p>
-                <p className="text-xs text-gray-500">パット</p>
+                <p className="text-2xl font-bold text-red-400">{latestStats.totalOB || '−'}</p>
+                <p className="text-xs text-zinc-500 mt-0.5">OB</p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-red-600">{latestStats.totalOB}</p>
-                <p className="text-xs text-gray-500">OB</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl font-bold text-orange-500">{latestStats.totalPenalty}</p>
-                <p className="text-xs text-gray-500">ペナルティ</p>
+                <p className="text-2xl font-bold text-orange-400">{latestStats.totalPenalty || '−'}</p>
+                <p className="text-xs text-zinc-500 mt-0.5">ペナルティ</p>
               </div>
             </div>
-            <div className="mt-3 text-center text-sm text-gray-500">
-              前半 {latestStats.frontScore} / 後半 {latestStats.backScore}
+
+            <div className="mt-3 flex justify-center gap-4 text-xs text-zinc-500">
+              <span>前半 {latestStats.frontScore}</span>
+              <span>/</span>
+              <span>後半 {latestStats.backScore}</span>
             </div>
-          </Card>
+          </div>
         ) : (
-          <Card className="p-6 text-center">
-            <Flag size={32} className="text-green-300 mx-auto mb-2" />
-            <p className="text-gray-600 font-medium">まだラウンドがありません</p>
-            <p className="text-gray-400 text-sm">ラウンドを記録して分析を始めましょう</p>
-          </Card>
+          <div className="bg-zinc-900 rounded-2xl p-8 text-center">
+            <Flag size={36} className="text-zinc-700 mx-auto mb-3" />
+            <p className="text-white font-bold">まだラウンドがありません</p>
+            <p className="text-zinc-500 text-sm mt-1">ラウンドを記録して分析を始めましょう</p>
+          </div>
         )}
 
-        {/* Today's issues */}
-        {latestLosses.length > 0 && (
-          <Card className="p-4">
-            <h2 className="font-bold text-gray-900 mb-3">前回の課題</h2>
-            <div className="space-y-2">
-              {latestLosses.map(l => (
-                <div key={l.key} className="flex items-center justify-between">
-                  <span className="text-sm text-gray-700">{l.label}</span>
-                  <span className="text-sm font-bold text-red-600">+{l.estimatedLoss}</span>
+        {/* Loss ranking */}
+        {losses.length > 0 && (
+          <div className="bg-zinc-900 rounded-2xl p-5">
+            <h2 className="text-white font-bold text-sm tracking-wide mb-3">
+              失点ランキング TOP{losses.length}
+            </h2>
+            <div className="space-y-2.5">
+              {losses.map((l, i) => (
+                <div key={l.key} className="flex items-center gap-3">
+                  <span className="text-lime-400 font-black text-sm w-4 flex-shrink-0">{i + 1}</span>
+                  <span className="flex-1 text-zinc-300 text-sm">{l.label}</span>
+                  <span className="text-red-400 font-bold text-sm">+{l.estimatedLoss}</span>
                 </div>
               ))}
             </div>
-          </Card>
+          </div>
         )}
 
-        {/* Quick actions */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => navigate('/record')}
-            className="flex flex-col items-center justify-center gap-2 bg-green-800 text-white py-5 rounded-2xl font-bold text-base active:bg-green-900"
-          >
-            <PlayCircle size={28} />
-            ラウンド開始
-          </button>
-          <button
-            onClick={() => navigate('/analysis')}
-            className="flex flex-col items-center justify-center gap-2 bg-white text-green-800 py-5 rounded-2xl font-bold text-base border border-green-200 active:bg-green-50"
-          >
-            <BarChart2 size={28} />
-            分析を見る
-          </button>
-        </div>
+        {/* Start round button */}
+        <button
+          onClick={() => navigate('/record')}
+          className="w-full bg-lime-400 text-black py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-2 active:bg-lime-300"
+        >
+          <Play size={20} fill="black" />
+          ラウンド開始
+        </button>
 
         {/* Recent rounds */}
         {completedRounds.length > 1 && (
-          <Card className="p-4">
-            <h2 className="font-bold text-gray-900 mb-3">最近のラウンド</h2>
-            <div className="space-y-2">
-              {completedRounds.slice(1, 4).map(r => {
+          <div className="bg-zinc-900 rounded-2xl p-4">
+            <h2 className="text-white font-bold text-sm mb-3">最近のラウンド</h2>
+            <div className="space-y-0">
+              {completedRounds.slice(1, 5).map((r, i, arr) => {
                 const st = calcScoreStats(r.holes);
+                const diff = st.totalScore - st.totalPar;
                 return (
                   <div
                     key={r.id}
-                    className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0 active:bg-gray-50 cursor-pointer"
+                    className={`flex items-center justify-between py-3 cursor-pointer active:opacity-70 ${
+                      i < arr.length - 1 ? 'border-b border-zinc-800' : ''
+                    }`}
                     onClick={() => navigate(`/rounds/${r.id}/scorecard`)}
                   >
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{r.courseName}</p>
-                      <p className="text-xs text-gray-400">{r.date}</p>
+                      <p className="text-white text-sm font-medium">{r.courseName}</p>
+                      <p className="text-zinc-500 text-xs mt-0.5">{r.date}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-gray-900">{st.totalScore}</p>
-                      <p className="text-xs text-gray-400">{st.totalPutts}パット</p>
+                      <p className="font-black text-white">{st.totalScore}</p>
+                      <p className="text-xs text-zinc-500">
+                        {diff >= 0 ? `+${diff}` : diff}
+                      </p>
                     </div>
                   </div>
                 );
               })}
             </div>
-          </Card>
+          </div>
         )}
       </div>
     </div>

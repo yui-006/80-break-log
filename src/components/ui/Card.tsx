@@ -7,7 +7,7 @@ type Props = {
 export function Card({ children, className = '', onClick }: Props) {
   return (
     <div
-      className={`bg-white rounded-2xl shadow-sm ${onClick ? 'active:shadow cursor-pointer' : ''} ${className}`}
+      className={`bg-zinc-900 rounded-2xl ${onClick ? 'active:opacity-80 cursor-pointer' : ''} ${className}`}
       onClick={onClick}
     >
       {children}

@@ -8,7 +8,9 @@
 body {
   margin: 0;
   font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'Yu Gothic', system-ui, sans-serif;
-  background: #f9fafb;
+  background: #0f0f0f;
+  color: #fff;
+  color-scheme: dark;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -27,4 +29,20 @@ input[type="number"]::-webkit-outer-spin-button {
 
 input[type="number"] {
   -moz-appearance: textfield;
+}
+
+/* Dark inputs / selects / textareas */
+input, select, textarea {
+  background-color: #27272a;
+  color: #fff;
+  border-color: #3f3f46;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #71717a;
+}
+
+select option {
+  background-color: #18181b;
+  color: #fff;
 }
