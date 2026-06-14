@@ -42,13 +42,13 @@ export const RESULT_CATEGORIES: { label: string; options: string[] }[] = [
 export const RESULT_OPTIONS = RESULT_CATEGORIES.flatMap(c => c.options);
 
 export const DIRECTION_OPTIONS = [
-  '真っ直ぐ', '右', '左', '右ペラ',
+  '真っ直ぐ', '右', '左', '右ペラ', 'ひっかけ',
 ];
 
 export const SHOT_TYPE_LABELS: Record<string, string> = {
   tee: 'ティー',
   full: 'フル',
-  half: 'ハーフ',
+  half: 'コントロール',
   approach: 'アプローチ',
   bunker: 'バンカー',
   putt: 'パット',

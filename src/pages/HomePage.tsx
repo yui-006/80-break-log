@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { calcScoreStats, calcLosses } from '../analytics';
-import { Bell, Flag, ChevronRight, Play } from 'lucide-react';
+import { calcScoreStats, calcLosses, generatePracticeMenu } from '../analytics';
+import { Bell, Flag, ChevronRight, Play, Target, TrendingDown } from 'lucide-react';
 
 function ScoreCircle({ score, par }: { score: number; par: number }) {
   const r = 54;
@@ -37,7 +37,24 @@ export function HomePage() {
   const recordingRound = rounds.find(r => r.status === 'recording');
   const latest = completedRounds[0];
   const latestStats = latest ? calcScoreStats(latest.holes) : null;
-  const losses = latest ? calcLosses(completedRounds.slice(0, 3)).filter(l => l.count > 0).slice(0, 5) : [];
+  const recentRounds = completedRounds.slice(0, 3);
+  const losses = recentRounds.length > 0 ? calcLosses(recentRounds).filter(l => l.count > 0).slice(0, 5) : [];
+  const topActions = recentRounds.length > 0 ? generatePracticeMenu(calcLosses(recentRounds)).slice(0, 2) : [];
+
+  const recentStats = recentRounds.map(r => calcScoreStats(r.holes));
+  const avgOf = (fn: (s: ReturnType<typeof calcScoreStats>) => number | null) => {
+    const vals = recentStats.map(fn).filter((v): v is number => v !== null);
+    return vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10 : null;
+  };
+  const metrics = recentStats.length > 0 ? {
+    avgScore: avgOf(s => s.totalScore),
+    avgPutts: avgOf(s => s.totalPutts),
+    avgOB: avgOf(s => s.totalOB),
+    avg3Putt: avgOf(s => s.threePuttCount),
+    avgPar3: avgOf(s => s.par3Avg),
+    avgPar4: avgOf(s => s.par4Avg),
+    avgPar5: avgOf(s => s.par5Avg),
+  } : null;
 
   return (
     <div className="min-h-full bg-[#0f0f0f]">
@@ -128,6 +145,80 @@ export function HomePage() {
                   <span className="text-red-400 font-bold text-sm">+{l.estimatedLoss}</span>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Today's actions */}
+        {topActions.length > 0 && (
+          <div className="bg-zinc-900 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Target size={15} className="text-lime-400" />
+              <h2 className="text-white font-bold text-sm tracking-wide">今日やるべきアクション・練習</h2>
+            </div>
+            <div className="space-y-3">
+              {topActions.map((item, i) => (
+                <div key={i} className="border border-zinc-800 rounded-xl p-3">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-xs bg-lime-400/20 text-lime-400 px-1.5 py-0.5 rounded-md font-bold">#{i + 1}</span>
+                    <span className="text-white text-sm font-bold">{item.category}</span>
+                  </div>
+                  <p className="text-zinc-400 text-xs mb-2">{item.content}</p>
+                  <ul className="space-y-1">
+                    {item.checklist.slice(0, 2).map((c, j) => (
+                      <li key={j} className="text-zinc-500 text-xs flex items-start gap-1.5">
+                        <span className="text-lime-400 mt-0.5 flex-shrink-0">✓</span>
+                        {c}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Key metrics */}
+        {metrics && (
+          <div className="bg-zinc-900 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingDown size={15} className="text-lime-400" />
+              <h2 className="text-white font-bold text-sm tracking-wide">改善すべき指標</h2>
+              <span className="text-zinc-600 text-xs ml-auto">直近{recentRounds.length}R平均</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-zinc-800 rounded-xl p-3 text-center">
+                <p className="text-xl font-black text-white">{metrics.avgPutts ?? '−'}</p>
+                <p className="text-xs text-zinc-500 mt-0.5">パット数</p>
+              </div>
+              <div className="bg-zinc-800 rounded-xl p-3 text-center">
+                <p className="text-xl font-black text-red-400">{metrics.avgOB ?? '−'}</p>
+                <p className="text-xs text-zinc-500 mt-0.5">OB</p>
+              </div>
+              <div className="bg-zinc-800 rounded-xl p-3 text-center">
+                <p className="text-xl font-black text-orange-400">{metrics.avg3Putt ?? '−'}</p>
+                <p className="text-xs text-zinc-500 mt-0.5">3パット</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              <div className="bg-zinc-800 rounded-xl p-3 text-center">
+                <p className="text-lg font-black text-zinc-300">
+                  {metrics.avgPar3 !== null ? (metrics.avgPar3 >= 0 ? `+${metrics.avgPar3}` : metrics.avgPar3) : '−'}
+                </p>
+                <p className="text-xs text-zinc-500 mt-0.5">Par3差</p>
+              </div>
+              <div className="bg-zinc-800 rounded-xl p-3 text-center">
+                <p className="text-lg font-black text-zinc-300">
+                  {metrics.avgPar4 !== null ? (metrics.avgPar4 >= 0 ? `+${metrics.avgPar4}` : metrics.avgPar4) : '−'}
+                </p>
+                <p className="text-xs text-zinc-500 mt-0.5">Par4差</p>
+              </div>
+              <div className="bg-zinc-800 rounded-xl p-3 text-center">
+                <p className="text-lg font-black text-zinc-300">
+                  {metrics.avgPar5 !== null ? (metrics.avgPar5 >= 0 ? `+${metrics.avgPar5}` : metrics.avgPar5) : '−'}
+                </p>
+                <p className="text-xs text-zinc-500 mt-0.5">Par5差</p>
+              </div>
             </div>
           </div>
         )}

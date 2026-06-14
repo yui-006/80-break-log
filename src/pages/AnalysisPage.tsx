@@ -60,6 +60,30 @@ export function AnalysisPage() {
       </div>
 
       <div className="px-4 pb-6 space-y-5">
+        {/* Loss analysis — TOP */}
+        <div className="bg-zinc-900 rounded-2xl p-4">
+          <h2 className="font-bold text-white mb-3">失点分析（推定ロス打数）</h2>
+          {losses.filter(l => l.count > 0).length === 0 ? (
+            <p className="text-sm text-zinc-500 text-center py-3">ショットログを記録すると表示されます</p>
+          ) : (
+            <div className="space-y-3">
+              {losses.filter(l => l.count > 0).map(l => (
+                <div key={l.key}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-zinc-300 font-medium">{l.label}</span>
+                    <span className="font-bold text-red-400">+{l.estimatedLoss}</span>
+                  </div>
+                  <div className="bg-zinc-800 rounded-full h-2">
+                    <div className="bg-red-500 h-2 rounded-full"
+                      style={{ width: `${Math.min(100, (l.estimatedLoss / (losses[0]?.estimatedLoss || 1)) * 100)}%` }} />
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-0.5">{l.count}回</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Score trend */}
         <div className="bg-zinc-900 rounded-2xl p-4">
           <h2 className="font-bold text-white mb-3">スコア推移</h2>
@@ -90,30 +114,6 @@ export function AnalysisPage() {
           </ResponsiveContainer>
         </div>
 
-        {/* Loss analysis */}
-        <div className="bg-zinc-900 rounded-2xl p-4">
-          <h2 className="font-bold text-white mb-3">失点分析（推定ロス打数）</h2>
-          {losses.filter(l => l.count > 0).length === 0 ? (
-            <p className="text-sm text-zinc-600 text-center py-3">ショットログを記録すると表示されます</p>
-          ) : (
-            <div className="space-y-3">
-              {losses.filter(l => l.count > 0).map(l => (
-                <div key={l.key}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-zinc-300 font-medium">{l.label}</span>
-                    <span className="font-bold text-red-400">+{l.estimatedLoss}</span>
-                  </div>
-                  <div className="bg-zinc-800 rounded-full h-2">
-                    <div className="bg-red-500 h-2 rounded-full"
-                      style={{ width: `${Math.min(100, (l.estimatedLoss / (losses[0]?.estimatedLoss || 1)) * 100)}%` }} />
-                  </div>
-                  <p className="text-xs text-zinc-600 mt-0.5">{l.count}回</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* Club usage */}
         {clubStats.length > 0 && (
           <div className="bg-zinc-900 rounded-2xl p-4">
@@ -128,32 +128,29 @@ export function AnalysisPage() {
               {clubStats.slice(0, 13).map((cs: ClubStat) => {
                 const club = clubs.find(c => c.id === cs.clubId);
                 if (!club) return null;
-                const t = cs.total;
+                const t = cs.souhyoTotal;
+                const exact = (n: number) => t > 0 ? n / t * 100 : 0;
                 const pct = (n: number) => t > 0 ? Math.round(n / t * 100) : 0;
-                const nPct = pct(cs.niceCount);
-                const oPct = pct(cs.okCount);
-                const yPct = pct(cs.yamamisuCount);
-                const mPct = pct(cs.misuCount);
-                const hasEval = cs.niceCount + cs.okCount + cs.yamamisuCount + cs.misuCount > 0;
+                const hasEval = t > 0;
                 return (
                   <div key={cs.clubId}>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-bold text-white w-8 flex-shrink-0">{club.name}</span>
-                      <span className="text-xs text-zinc-500">{t}回</span>
+                      <span className="text-xs text-zinc-500">{cs.total}回</span>
                     </div>
                     {hasEval ? (
                       <>
                         <div className="flex rounded-full overflow-hidden h-2.5 bg-zinc-800">
-                          {nPct > 0 && <div className="bg-lime-400 h-full" style={{ width: `${nPct}%` }} />}
-                          {oPct > 0 && <div className="bg-blue-400 h-full" style={{ width: `${oPct}%` }} />}
-                          {yPct > 0 && <div className="bg-orange-400 h-full" style={{ width: `${yPct}%` }} />}
-                          {mPct > 0 && <div className="bg-red-400 h-full" style={{ width: `${mPct}%` }} />}
+                          {cs.niceCount > 0 && <div className="bg-lime-400 h-full" style={{ width: `${exact(cs.niceCount)}%` }} />}
+                          {cs.okCount > 0 && <div className="bg-blue-400 h-full" style={{ width: `${exact(cs.okCount)}%` }} />}
+                          {cs.yamamisuCount > 0 && <div className="bg-orange-400 h-full" style={{ width: `${exact(cs.yamamisuCount)}%` }} />}
+                          {cs.misuCount > 0 && <div className="bg-red-400 h-full" style={{ width: `${exact(cs.misuCount)}%` }} />}
                         </div>
                         <div className="flex gap-3 mt-1">
-                          <span className="text-xs text-lime-400">{nPct}%</span>
-                          <span className="text-xs text-blue-400">{oPct}%</span>
-                          <span className="text-xs text-orange-400">{yPct}%</span>
-                          <span className="text-xs text-red-400">{mPct}%</span>
+                          {cs.niceCount > 0 && <span className="text-xs text-lime-400">{pct(cs.niceCount)}%</span>}
+                          {cs.okCount > 0 && <span className="text-xs text-blue-400">{pct(cs.okCount)}%</span>}
+                          {cs.yamamisuCount > 0 && <span className="text-xs text-orange-400">{pct(cs.yamamisuCount)}%</span>}
+                          {cs.misuCount > 0 && <span className="text-xs text-red-400">{pct(cs.misuCount)}%</span>}
                         </div>
                       </>
                     ) : (

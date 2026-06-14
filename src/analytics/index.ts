@@ -208,11 +208,14 @@ export function generatePracticeMenu(losses: LossCategory[]): PracticeItem[] {
 export type ClubStat = {
   clubId: string;
   total: number;
+  souhyoTotal: number; // 総評が記録されたショット数 (denominator for 100%)
   niceCount: number;
   okCount: number;
   yamamisuCount: number;
   misuCount: number;
 };
+
+const SOUHYO_SET = new Set(['ナイス', 'OK', '普通', 'ややミス', 'ミス']);
 
 export function calcClubStats(rounds: Round[]): ClubStat[] {
   const map = new Map<string, Omit<ClubStat, 'clubId'>>();
@@ -220,13 +223,17 @@ export function calcClubStats(rounds: Round[]): ClubStat[] {
     for (const hole of round.holes) {
       for (const shot of hole.shots) {
         if (!shot.clubId) continue;
-        const cur = map.get(shot.clubId) ?? { total: 0, niceCount: 0, okCount: 0, yamamisuCount: 0, misuCount: 0 };
+        const cur = map.get(shot.clubId) ?? { total: 0, souhyoTotal: 0, niceCount: 0, okCount: 0, yamamisuCount: 0, misuCount: 0 };
         cur.total++;
         const rs = shot.results ?? [];
-        if (rs.includes('ナイス')) cur.niceCount++;
-        if (rs.includes('OK') || rs.includes('普通')) cur.okCount++;
-        if (rs.includes('ややミス')) cur.yamamisuCount++;
-        if (rs.includes('ミス')) cur.misuCount++;
+        const souhyo = rs.find(r => SOUHYO_SET.has(r));
+        if (souhyo) {
+          cur.souhyoTotal++;
+          if (souhyo === 'ナイス') cur.niceCount++;
+          else if (souhyo === 'OK' || souhyo === '普通') cur.okCount++;
+          else if (souhyo === 'ややミス') cur.yamamisuCount++;
+          else if (souhyo === 'ミス') cur.misuCount++;
+        }
         map.set(shot.clubId, cur);
       }
     }
