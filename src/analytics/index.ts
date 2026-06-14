@@ -100,7 +100,10 @@ export function calcLosses(rounds: Round[]): LossCategory[] {
 
   const ironDirMissCount = entries.filter(({ shot }) =>
     IRON_CLUBS.has(shot.clubId ?? '') &&
-    ['右', '左', '右ペラ', '引っかけ', '捕まらず右'].includes(shot.direction ?? '')
+    (
+      ['右', '左', '右ペラ'].includes(shot.direction ?? '') ||
+      hasResult(shot, '引っかけ', '捕まらず右')
+    )
   ).length;
 
   const slopeMissCount = entries.filter(({ shot }) =>

@@ -34,15 +34,14 @@ export const LIE_OPTIONS = [
 
 export const RESULT_CATEGORIES: { label: string; options: string[] }[] = [
   { label: '距離', options: ['狙い通り', 'ショート', 'オーバー', 'あまり飛ばない'] },
-  { label: '方向', options: ['まっすぐ', '右', '左'] },
-  { label: '打感', options: ['ナイス', '普通', 'トップ', 'ハーフトップ', 'ダフリ', 'チョロ', '当たりそこない', 'シャンク'] },
+  { label: '打感', options: ['ナイス', '普通', 'トップ', 'ハーフトップ', 'ダフリ', 'チョロ', '当たりそこない', 'シャンク', '引っかけ', '捕まった', '捕まらず右'] },
   { label: 'その他', options: ['OB', 'ペナルティ', 'ナイスアウト', 'ホームラン', '1回で出ない'] },
 ];
 
 export const RESULT_OPTIONS = RESULT_CATEGORIES.flatMap(c => c.options);
 
 export const DIRECTION_OPTIONS = [
-  '真っ直ぐ', '右', '左', '右ペラ', '引っかけ', '捕まった', '捕まらず右',
+  '真っ直ぐ', '右', '左', '右ペラ',
 ];
 
 export const SHOT_TYPE_LABELS: Record<string, string> = {
