@@ -79,7 +79,6 @@ function ShotInputModal({
                   setShotTypes(prev =>
                     prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]
                   );
-                  setClubId(''); // 種別変更時はクラブリセット
                 }}
                 className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   shotTypes.includes(t) ? 'bg-green-800 text-white' : 'bg-gray-100 text-gray-700'
