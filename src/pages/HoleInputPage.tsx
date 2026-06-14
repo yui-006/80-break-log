@@ -308,8 +308,9 @@ export function HoleInputPage() {
               label="スコア"
               value={hole.score ?? 0}
               onChange={v => setField('score', v || undefined)}
-              min={0}
+              min={1}
               max={20}
+              defaultValue={hole.par}
             />
             {hole.score != null && (
               <p className={`text-xs text-right font-medium mt-0.5 ${
