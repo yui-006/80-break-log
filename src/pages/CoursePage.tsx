@@ -10,25 +10,19 @@ import { Plus, Search, ChevronRight, Trash2, Edit3, MapPin, Globe } from 'lucide
 function genId() { return crypto.randomUUID(); }
 function now() { return new Date().toISOString(); }
 
-// ─── Blank course factory ───────────────────────────────────────────────────
+const INPUT_CLS = 'mt-1 w-full border border-zinc-700 bg-zinc-800 text-white rounded-xl px-3 py-2.5 text-base placeholder:text-zinc-500';
+const LABEL_CLS = 'text-sm font-medium text-zinc-300';
+
 function blankCourse(id: string): Course {
   const holes: CourseHole[] = Array.from({ length: 18 }, (_, i) => ({
-    id: genId(),
-    courseId: id,
-    holeNo: i + 1,
-    par: 4 as const,
-    handicap: i + 1,
-    yardsByTee: { back: undefined, regular: undefined, front: undefined, ladies: undefined },
+    id: genId(), courseId: id, holeNo: i + 1, par: 4 as const,
+    handicap: i + 1, yardsByTee: { back: undefined, regular: undefined, front: undefined, ladies: undefined },
   }));
   return { id, name: '', location: '', prefecture: '', source: 'manual', memo: '', holes, createdAt: now(), updatedAt: now() };
 }
 
-// ─── Hole Table Editor ──────────────────────────────────────────────────────
-function HoleTableEditor({ holes, onChange }: {
-  holes: CourseHole[];
-  onChange: (holes: CourseHole[]) => void;
-}) {
-  function update(idx: number, field: keyof CourseHole | string, value: unknown) {
+function HoleTableEditor({ holes, onChange }: { holes: CourseHole[]; onChange: (holes: CourseHole[]) => void }) {
+  function update(idx: number, field: string, value: unknown) {
     const next = holes.map((h, i) => {
       if (i !== idx) return h;
       if (field.startsWith('tee.')) {
@@ -40,11 +34,13 @@ function HoleTableEditor({ holes, onChange }: {
     onChange(next);
   }
 
+  const cellInput = 'w-14 border border-zinc-700 bg-zinc-800 text-white rounded px-1 py-0.5 text-center text-xs';
+
   return (
     <div className="overflow-x-auto -mx-4">
       <table className="text-xs w-full min-w-max">
         <thead>
-          <tr className="bg-gray-100 text-gray-600">
+          <tr className="bg-zinc-800 text-zinc-400">
             <th className="px-2 py-2 text-left">H</th>
             <th className="px-2 py-2">Par</th>
             <th className="px-2 py-2">Back</th>
@@ -56,36 +52,25 @@ function HoleTableEditor({ holes, onChange }: {
         </thead>
         <tbody>
           {holes.map((h, i) => (
-            <tr key={h.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-              <td className="px-2 py-1 font-medium text-gray-700">{h.holeNo}</td>
+            <tr key={h.id} className={i % 2 === 0 ? 'bg-zinc-900' : 'bg-zinc-800/50'}>
+              <td className="px-2 py-1 font-medium text-zinc-300">{h.holeNo}</td>
               <td className="px-1 py-1">
-                <select
-                  value={h.par}
-                  onChange={e => update(i, 'par', Number(e.target.value) as 3|4|5)}
-                  className="w-12 border border-gray-200 rounded px-1 py-0.5 text-center"
-                >
+                <select value={h.par} onChange={e => update(i, 'par', Number(e.target.value) as 3|4|5)}
+                  className="w-12 border border-zinc-700 bg-zinc-800 text-white rounded px-1 py-0.5 text-center">
                   {[3,4,5].map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </td>
               {(['back','regular','front','ladies'] as const).map(tee => (
                 <td key={tee} className="px-1 py-1">
-                  <input
-                    type="number"
-                    value={h.yardsByTee?.[tee] ?? ''}
+                  <input type="number" value={h.yardsByTee?.[tee] ?? ''}
                     onChange={e => update(i, `tee.${tee}`, e.target.value ? Number(e.target.value) : undefined)}
-                    className="w-14 border border-gray-200 rounded px-1 py-0.5 text-center"
-                    placeholder="-"
-                  />
+                    className={cellInput} placeholder="-" />
                 </td>
               ))}
               <td className="px-1 py-1">
-                <input
-                  type="number"
-                  value={h.handicap ?? ''}
+                <input type="number" value={h.handicap ?? ''}
                   onChange={e => update(i, 'handicap', e.target.value ? Number(e.target.value) : undefined)}
-                  className="w-12 border border-gray-200 rounded px-1 py-0.5 text-center"
-                  placeholder="-"
-                />
+                  className="w-12 border border-zinc-700 bg-zinc-800 text-white rounded px-1 py-0.5 text-center" placeholder="-" />
               </td>
             </tr>
           ))}
@@ -95,83 +80,42 @@ function HoleTableEditor({ holes, onChange }: {
   );
 }
 
-// ─── Course Form Modal ──────────────────────────────────────────────────────
-function CourseFormModal({ initial, onSave, onClose }: {
-  initial: Course;
-  onSave: (c: Course) => void;
-  onClose: () => void;
-}) {
+function CourseFormModal({ initial, onSave, onClose }: { initial: Course; onSave: (c: Course) => void; onClose: () => void }) {
   const [course, setCourse] = useState<Course>(initial);
-
-  function field(key: keyof Course) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      setCourse(prev => ({ ...prev, [key]: e.target.value, updatedAt: now() }));
-  }
+  const field = (key: keyof Course) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setCourse(prev => ({ ...prev, [key]: e.target.value, updatedAt: now() }));
 
   return (
     <Modal title={initial.name ? 'コース編集' : 'コース追加'} onClose={onClose}>
       <div className="space-y-4 pt-4">
         <div>
-          <label className="text-sm font-medium text-gray-700">コース名 *</label>
-          <input
-            value={course.name}
-            onChange={field('name')}
-            className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base"
-            placeholder="太平洋クラブ 御殿場コース"
-          />
+          <label className={LABEL_CLS}>コース名 *</label>
+          <input value={course.name} onChange={field('name')} className={INPUT_CLS} placeholder="太平洋クラブ 御殿場コース" />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-sm font-medium text-gray-700">都道府県</label>
-            <input
-              value={course.prefecture ?? ''}
-              onChange={field('prefecture')}
-              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base"
-              placeholder="静岡県"
-            />
+            <label className={LABEL_CLS}>都道府県</label>
+            <input value={course.prefecture ?? ''} onChange={field('prefecture')} className={INPUT_CLS} placeholder="静岡県" />
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700">所在地</label>
-            <input
-              value={course.location ?? ''}
-              onChange={field('location')}
-              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base"
-              placeholder="御殿場市"
-            />
+            <label className={LABEL_CLS}>所在地</label>
+            <input value={course.location ?? ''} onChange={field('location')} className={INPUT_CLS} placeholder="御殿場市" />
           </div>
         </div>
         <div>
-          <label className="text-sm font-medium text-gray-700">参照URL</label>
-          <input
-            value={course.sourceUrl ?? ''}
-            onChange={field('sourceUrl')}
-            className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base"
-            placeholder="https://..."
-          />
+          <label className={LABEL_CLS}>参照URL</label>
+          <input value={course.sourceUrl ?? ''} onChange={field('sourceUrl')} className={INPUT_CLS} placeholder="https://..." />
         </div>
         <div>
-          <label className="text-sm font-medium text-gray-700">メモ</label>
-          <textarea
-            value={course.memo ?? ''}
-            onChange={field('memo')}
-            rows={2}
-            className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base resize-none"
-          />
+          <label className={LABEL_CLS}>メモ</label>
+          <textarea value={course.memo ?? ''} onChange={field('memo')} rows={2} className={`${INPUT_CLS} resize-none`} />
         </div>
-
         <div>
-          <h3 className="font-bold text-gray-900 mb-2">ホール情報</h3>
-          <HoleTableEditor
-            holes={course.holes}
-            onChange={holes => setCourse(prev => ({ ...prev, holes, updatedAt: now() }))}
-          />
+          <h3 className="font-bold text-white mb-2">ホール情報</h3>
+          <HoleTableEditor holes={course.holes} onChange={holes => setCourse(prev => ({ ...prev, holes, updatedAt: now() }))} />
         </div>
-
-        <button
-          onClick={() => { if (course.name.trim()) onSave(course); }}
-          disabled={!course.name.trim()}
-          className="w-full bg-green-800 text-white py-3.5 rounded-2xl font-bold text-base disabled:opacity-40 active:bg-green-900"
-        >
+        <button onClick={() => { if (course.name.trim()) onSave(course); }} disabled={!course.name.trim()}
+          className="w-full bg-lime-400 text-black py-3.5 rounded-2xl font-bold text-base disabled:opacity-40 active:bg-lime-300">
           保存する
         </button>
       </div>
@@ -179,11 +123,7 @@ function CourseFormModal({ initial, onSave, onClose }: {
   );
 }
 
-// ─── Course Search Modal ─────────────────────────────────────────────────────
-function CourseSearchModal({ onSelect, onClose }: {
-  onSelect: (c: Course) => void;
-  onClose: () => void;
-}) {
+function CourseSearchModal({ onSelect, onClose }: { onSelect: (c: Course) => void; onClose: () => void }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Awaited<ReturnType<typeof mockCourseProvider.search>>>([]);
   const [searching, setSearching] = useState(false);
@@ -201,67 +141,42 @@ function CourseSearchModal({ onSelect, onClose }: {
     if (!detail) return;
     const newId = genId();
     const course: Course = {
-      id: newId,
-      name: detail.name ?? '',
-      location: detail.location,
-      prefecture: detail.prefecture,
-      source: 'mock',
-      sourceId: detail.sourceId,
-      sourceUrl: detail.sourceUrl,
-      memo: detail.memo,
+      id: newId, name: detail.name ?? '', location: detail.location, prefecture: detail.prefecture,
+      source: 'mock', sourceId: detail.sourceId, sourceUrl: detail.sourceUrl, memo: detail.memo,
       holes: (detail.holes ?? []).map(h => ({ ...h, id: genId(), courseId: newId })),
-      createdAt: now(),
-      updatedAt: now(),
+      createdAt: now(), updatedAt: now(),
     };
     setPreview(course);
   }
 
-  if (preview) {
-    return (
-      <CourseFormModal
-        initial={preview}
-        onSave={onSelect}
-        onClose={() => setPreview(null)}
-      />
-    );
-  }
+  if (preview) return <CourseFormModal initial={preview} onSave={onSelect} onClose={() => setPreview(null)} />;
 
   return (
     <Modal title="コースを検索" onClose={onClose}>
       <div className="space-y-4 pt-4">
         <div className="flex gap-2">
-          <input
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && search()}
-            className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-base"
-            placeholder="コース名・都道府県"
-          />
-          <button
-            onClick={search}
-            className="bg-green-800 text-white px-4 rounded-xl font-medium active:bg-green-900"
-          >
+          <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && search()}
+            className="flex-1 border border-zinc-700 bg-zinc-800 text-white rounded-xl px-3 py-2.5 text-base placeholder:text-zinc-500"
+            placeholder="コース名・都道府県" />
+          <button onClick={search} className="bg-lime-400 text-black px-4 rounded-xl font-medium active:bg-lime-300">
             {searching ? '…' : <Search size={18} />}
           </button>
         </div>
         {results.length === 0 && !searching && (
-          <p className="text-center text-gray-400 text-sm py-4">
+          <p className="text-center text-zinc-500 text-sm py-4">
             検索してコース候補を探してください<br />
             <span className="text-xs">(MVPはサンプルデータで動作)</span>
           </p>
         )}
         <div className="space-y-2">
           {results.map(r => (
-            <div
-              key={r.id}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-xl active:bg-gray-100"
-              onClick={() => loadPreview(r.id)}
-            >
+            <div key={r.id} className="flex items-center justify-between p-3 bg-zinc-800 rounded-xl active:bg-zinc-700 cursor-pointer"
+              onClick={() => loadPreview(r.id)}>
               <div>
-                <p className="font-medium text-gray-900 text-sm">{r.name}</p>
-                <p className="text-xs text-gray-500">{r.prefecture} {r.location}</p>
+                <p className="font-medium text-white text-sm">{r.name}</p>
+                <p className="text-xs text-zinc-500">{r.prefecture} {r.location}</p>
               </div>
-              <ChevronRight size={16} className="text-gray-400" />
+              <ChevronRight size={16} className="text-zinc-600" />
             </div>
           ))}
         </div>
@@ -270,37 +185,27 @@ function CourseSearchModal({ onSelect, onClose }: {
   );
 }
 
-// ─── Course Detail Modal ─────────────────────────────────────────────────────
-function CourseDetailModal({ course, onEdit, onDelete, onClose }: {
-  course: Course;
-  onEdit: () => void;
-  onDelete: () => void;
-  onClose: () => void;
-}) {
+function CourseDetailModal({ course, onEdit, onDelete, onClose }: { course: Course; onEdit: () => void; onDelete: () => void; onClose: () => void }) {
   const totalPar = course.holes.reduce((s, h) => s + h.par, 0);
   return (
     <Modal title={course.name} onClose={onClose}>
       <div className="pt-4 space-y-4">
         {course.location && (
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <MapPin size={14} />
-            <span>{course.prefecture} {course.location}</span>
+          <div className="flex items-center gap-2 text-sm text-zinc-400">
+            <MapPin size={14} /><span>{course.prefecture} {course.location}</span>
           </div>
         )}
         {course.sourceUrl && (
-          <div className="flex items-center gap-2 text-sm text-blue-600">
+          <div className="flex items-center gap-2 text-sm text-blue-400">
             <Globe size={14} />
-            <a href={course.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline truncate">
-              {course.sourceUrl}
-            </a>
+            <a href={course.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline truncate">{course.sourceUrl}</a>
           </div>
         )}
-        <div className="text-sm text-gray-500">全{course.holes.length}ホール / Par {totalPar}</div>
-
+        <div className="text-sm text-zinc-500">全{course.holes.length}ホール / Par {totalPar}</div>
         <div className="overflow-x-auto -mx-4">
           <table className="text-xs w-full min-w-max">
             <thead>
-              <tr className="bg-gray-100 text-gray-600">
+              <tr className="bg-zinc-800 text-zinc-400">
                 <th className="px-3 py-2 text-left">H</th>
                 <th className="px-2 py-2">Par</th>
                 <th className="px-2 py-2">Back</th>
@@ -313,32 +218,27 @@ function CourseDetailModal({ course, onEdit, onDelete, onClose }: {
             </thead>
             <tbody>
               {course.holes.map((h, i) => (
-                <tr key={h.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="px-3 py-1.5 font-medium text-gray-700">{h.holeNo}</td>
-                  <td className="px-2 py-1.5 text-center">{h.par}</td>
-                  <td className="px-2 py-1.5 text-center">{h.yardsByTee?.back ?? '-'}</td>
-                  <td className="px-2 py-1.5 text-center">{h.yardsByTee?.regular ?? '-'}</td>
-                  <td className="px-2 py-1.5 text-center">{h.yardsByTee?.front ?? '-'}</td>
-                  <td className="px-2 py-1.5 text-center">{h.yardsByTee?.ladies ?? '-'}</td>
-                  <td className="px-2 py-1.5 text-center">{h.handicap ?? '-'}</td>
-                  <td className="px-2 py-1.5 text-gray-500">{h.memo ?? ''}</td>
+                <tr key={h.id} className={i % 2 === 0 ? 'bg-zinc-900' : 'bg-zinc-800/50'}>
+                  <td className="px-3 py-1.5 font-medium text-zinc-300">{h.holeNo}</td>
+                  <td className="px-2 py-1.5 text-center text-white">{h.par}</td>
+                  <td className="px-2 py-1.5 text-center text-zinc-400">{h.yardsByTee?.back ?? '-'}</td>
+                  <td className="px-2 py-1.5 text-center text-zinc-400">{h.yardsByTee?.regular ?? '-'}</td>
+                  <td className="px-2 py-1.5 text-center text-zinc-400">{h.yardsByTee?.front ?? '-'}</td>
+                  <td className="px-2 py-1.5 text-center text-zinc-400">{h.yardsByTee?.ladies ?? '-'}</td>
+                  <td className="px-2 py-1.5 text-center text-zinc-400">{h.handicap ?? '-'}</td>
+                  <td className="px-2 py-1.5 text-zinc-500">{h.memo ?? ''}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-
         <div className="flex gap-3 pt-2">
-          <button
-            onClick={onEdit}
-            className="flex-1 flex items-center justify-center gap-2 bg-green-800 text-white py-3 rounded-2xl font-bold active:bg-green-900"
-          >
+          <button onClick={onEdit}
+            className="flex-1 flex items-center justify-center gap-2 bg-lime-400 text-black py-3 rounded-2xl font-bold active:bg-lime-300">
             <Edit3 size={16} /> 編集
           </button>
-          <button
-            onClick={onDelete}
-            className="flex items-center justify-center gap-2 bg-red-50 text-red-600 px-4 py-3 rounded-2xl font-bold active:bg-red-100"
-          >
+          <button onClick={onDelete}
+            className="flex items-center justify-center gap-2 bg-red-900/40 text-red-400 px-4 py-3 rounded-2xl font-bold active:bg-red-900/60">
             <Trash2 size={16} />
           </button>
         </div>
@@ -347,7 +247,6 @@ function CourseDetailModal({ course, onEdit, onDelete, onClose }: {
   );
 }
 
-// ─── Main CoursePage ──────────────────────────────────────────────────────────
 export function CoursePage() {
   const { state, saveCourse, deleteCourse } = useApp();
   const navigate = useNavigate();
@@ -357,116 +256,77 @@ export function CoursePage() {
   const courses = state.courses.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const selected = courses.find(c => c.id === selectedId) ?? null;
 
-  async function handleSave(course: Course) {
-    await saveCourse(course);
-    setMode('none');
-    setSelectedId(null);
-  }
-
+  async function handleSave(course: Course) { await saveCourse(course); setMode('none'); setSelectedId(null); }
   async function handleDelete() {
     if (!selectedId) return;
     if (!confirm('このコースを削除しますか？')) return;
-    await deleteCourse(selectedId);
-    setMode('none');
-    setSelectedId(null);
+    await deleteCourse(selectedId); setMode('none'); setSelectedId(null);
   }
 
   return (
-    <div className="min-h-full bg-gray-50">
-      <div className="bg-green-800 text-white px-5 pt-12 pb-6 flex items-end justify-between">
-        <h1 className="text-2xl font-bold">コース管理</h1>
+    <div className="min-h-full bg-[#0f0f0f]">
+      <div className="px-5 pt-12 pb-5 flex items-end justify-between">
+        <h1 className="text-2xl font-bold text-white">コース管理</h1>
         <div className="flex gap-2">
-          <button
-            onClick={() => setMode('search')}
-            className="flex items-center gap-1 bg-green-700 text-white px-3 py-2 rounded-xl text-sm font-medium active:bg-green-600"
-          >
+          <button onClick={() => setMode('search')}
+            className="flex items-center gap-1 bg-zinc-800 text-zinc-300 px-3 py-2 rounded-xl text-sm font-medium active:bg-zinc-700">
             <Search size={14} /> ネット検索
           </button>
-          <button
-            onClick={() => setMode('new')}
-            className="flex items-center gap-1 bg-white text-green-800 px-3 py-2 rounded-xl text-sm font-bold active:bg-green-50"
-          >
+          <button onClick={() => setMode('new')}
+            className="flex items-center gap-1 bg-lime-400 text-black px-3 py-2 rounded-xl text-sm font-bold active:bg-lime-300">
             <Plus size={14} /> 手入力
           </button>
         </div>
       </div>
 
-      <div className="px-4 py-4 space-y-3">
+      <div className="px-4 pb-4 space-y-3">
         {courses.length === 0 && (
-          <div className="text-center py-12 text-gray-400">
-            <MapPin size={40} className="mx-auto mb-2 text-gray-300" />
+          <div className="text-center py-16 text-zinc-600">
+            <MapPin size={40} className="mx-auto mb-2 text-zinc-700" />
             <p>コースが登録されていません</p>
-            <p className="text-sm">「ネット検索」か「手入力」で追加してください</p>
+            <p className="text-sm mt-1">「ネット検索」か「手入力」で追加してください</p>
           </div>
         )}
         {courses.map(c => {
           const totalPar = c.holes.reduce((s, h) => s + h.par, 0);
           return (
-            <Card
-              key={c.id}
-              className="p-4"
-              onClick={() => { setSelectedId(c.id); setMode('detail'); }}
-            >
+            <Card key={c.id} className="p-4" onClick={() => { setSelectedId(c.id); setMode('detail'); }}>
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-gray-900 truncate">{c.name}</p>
+                  <p className="font-bold text-white truncate">{c.name}</p>
                   {c.location && (
-                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                    <p className="text-xs text-zinc-500 flex items-center gap-1 mt-0.5">
                       <MapPin size={10} /> {c.prefecture} {c.location}
                     </p>
                   )}
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {c.holes.length}H / Par {totalPar}
-                    {c.source === 'mock' && ' · サンプル'}
+                  <p className="text-xs text-zinc-600 mt-0.5">
+                    {c.holes.length}H / Par {totalPar}{c.source === 'mock' && ' · サンプル'}
                   </p>
                 </div>
-                <ChevronRight size={18} className="text-gray-300 flex-shrink-0" />
+                <ChevronRight size={18} className="text-zinc-700 flex-shrink-0" />
               </div>
             </Card>
           );
         })}
       </div>
 
-      {/* Quick start from course */}
       {courses.length > 0 && (
         <div className="px-4 pb-4">
-          <button
-            onClick={() => navigate('/record')}
-            className="w-full bg-green-800 text-white py-4 rounded-2xl font-bold text-base active:bg-green-900"
-          >
-            このコースでラウンド開始 →
+          <button onClick={() => navigate('/record')}
+            className="w-full bg-lime-400 text-black py-4 rounded-2xl font-bold text-base active:bg-lime-300">
+            ラウンドを開始 →
           </button>
         </div>
       )}
 
-      {/* Modals */}
-      {mode === 'new' && (
-        <CourseFormModal
-          initial={blankCourse(genId())}
-          onSave={handleSave}
-          onClose={() => setMode('none')}
-        />
-      )}
-      {mode === 'search' && (
-        <CourseSearchModal
-          onSelect={handleSave}
-          onClose={() => setMode('none')}
-        />
-      )}
+      {mode === 'new' && <CourseFormModal initial={blankCourse(genId())} onSave={handleSave} onClose={() => setMode('none')} />}
+      {mode === 'search' && <CourseSearchModal onSelect={handleSave} onClose={() => setMode('none')} />}
       {mode === 'detail' && selected && (
-        <CourseDetailModal
-          course={selected}
-          onEdit={() => setMode('edit')}
-          onDelete={handleDelete}
-          onClose={() => { setMode('none'); setSelectedId(null); }}
-        />
+        <CourseDetailModal course={selected} onEdit={() => setMode('edit')} onDelete={handleDelete}
+          onClose={() => { setMode('none'); setSelectedId(null); }} />
       )}
       {mode === 'edit' && selected && (
-        <CourseFormModal
-          initial={selected}
-          onSave={handleSave}
-          onClose={() => setMode('detail')}
-        />
+        <CourseFormModal initial={selected} onSave={handleSave} onClose={() => setMode('detail')} />
       )}
     </div>
   );

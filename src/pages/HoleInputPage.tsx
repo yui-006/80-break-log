@@ -14,6 +14,9 @@ import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, TableProperties } from
 function genId() { return crypto.randomUUID(); }
 function nowStr() { return new Date().toISOString(); }
 
+const GOOD_RESULTS = ['ナイス', 'OK', '普通', '狙い通り', 'ナイスアウト'];
+const HIDDEN_DIRECTIONS = ['真っ直ぐ', '普通'];
+
 // ─── Shot Input Modal ────────────────────────────────────────────────────────
 function ShotInputModal({
   initial,
@@ -67,9 +70,9 @@ function ShotInputModal({
   return (
     <Modal title={`ショット ${shotNo}`} onClose={onClose}>
       <div className="space-y-5 pt-4">
-        {/* Shot type（複数選択可） */}
+        {/* スイングタイプ */}
         <div>
-          <p className="text-sm font-bold text-gray-700 mb-2">スイングタイプ <span className="font-normal text-gray-400 text-xs">複数選択可</span></p>
+          <p className="text-sm font-bold text-white mb-2">スイングタイプ <span className="font-normal text-zinc-500 text-xs">複数選択可</span></p>
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
             {allShotTypes.map(t => (
               <button
@@ -81,7 +84,7 @@ function ShotInputModal({
                   );
                 }}
                 className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  shotTypes.includes(t) ? 'bg-green-800 text-white' : 'bg-gray-100 text-gray-700'
+                  shotTypes.includes(t) ? 'bg-lime-400 text-black' : 'bg-zinc-800 text-zinc-300'
                 }`}
               >
                 {SHOT_TYPE_LABELS[t]}
@@ -90,9 +93,9 @@ function ShotInputModal({
           </div>
         </div>
 
-        {/* Club（W→U→アイアン→ウェッジ→パター順） */}
+        {/* クラブ */}
         <div>
-          <p className="text-sm font-bold text-gray-700 mb-2">クラブ</p>
+          <p className="text-sm font-bold text-white mb-2">クラブ</p>
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
             {availableClubs.map(c => (
               <button
@@ -100,7 +103,7 @@ function ShotInputModal({
                 type="button"
                 onClick={() => setClubId(prev => prev === c.id ? '' : c.id)}
                 className={`flex-shrink-0 px-3 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
-                  clubId === c.id ? 'bg-green-800 text-white' : 'bg-gray-100 text-gray-700'
+                  clubId === c.id ? 'bg-lime-400 text-black' : 'bg-zinc-800 text-zinc-300'
                 }`}
               >
                 {c.name}
@@ -109,9 +112,9 @@ function ShotInputModal({
           </div>
         </div>
 
-        {/* ライ（複数選択可） */}
+        {/* ライ */}
         <div>
-          <p className="text-sm font-bold text-gray-700 mb-2">ライ <span className="font-normal text-gray-400 text-xs">複数選択可</span></p>
+          <p className="text-sm font-bold text-white mb-2">ライ <span className="font-normal text-zinc-500 text-xs">複数選択可</span></p>
           <SelectButtons
             options={LIE_OPTIONS}
             value={lies}
@@ -123,11 +126,11 @@ function ShotInputModal({
 
         {/* 結果（カテゴリ別・複数選択可） */}
         <div>
-          <p className="text-sm font-bold text-gray-700 mb-3">結果 <span className="font-normal text-gray-400 text-xs">複数選択可</span></p>
+          <p className="text-sm font-bold text-white mb-3">結果 <span className="font-normal text-zinc-500 text-xs">複数選択可</span></p>
           <div className="space-y-3">
             {RESULT_CATEGORIES.map(cat => (
               <div key={cat.label}>
-                <p className="text-xs font-medium text-gray-400 mb-1.5">{cat.label}</p>
+                <p className="text-xs font-medium text-zinc-500 mb-1.5">{cat.label}</p>
                 <SelectButtons
                   options={cat.options}
                   value={results}
@@ -140,9 +143,9 @@ function ShotInputModal({
           </div>
         </div>
 
-        {/* 方向（単一選択） */}
+        {/* 方向 */}
         <div>
-          <p className="text-sm font-bold text-gray-700 mb-2">方向</p>
+          <p className="text-sm font-bold text-white mb-2">方向</p>
           <SelectButtons
             options={DIRECTION_OPTIONS}
             value={direction}
@@ -154,32 +157,32 @@ function ShotInputModal({
         {/* 距離 & ペナルティ */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-sm font-medium text-gray-700">距離 (y)</label>
+            <label className="text-sm font-medium text-zinc-300">距離 (y)</label>
             <input
               type="number"
               value={distance}
               onChange={e => setDistance(e.target.value)}
-              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base"
+              className="mt-1 w-full border border-zinc-700 bg-zinc-800 text-white rounded-xl px-3 py-2.5 text-base placeholder:text-zinc-500"
               placeholder="例: 180"
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700">ペナルティ</label>
+            <label className="text-sm font-medium text-zinc-300">ペナルティ</label>
             <div className="flex items-center gap-2 mt-1">
-              <button type="button" onClick={() => setPenalty(Math.max(0, penalty - 1))} className="w-9 h-9 bg-gray-100 rounded-full font-bold">−</button>
-              <span className="w-6 text-center font-bold">{penalty}</span>
-              <button type="button" onClick={() => setPenalty(penalty + 1)} className="w-9 h-9 bg-green-800 rounded-full text-white font-bold">+</button>
+              <button type="button" onClick={() => setPenalty(Math.max(0, penalty - 1))} className="w-9 h-9 bg-zinc-800 text-white rounded-full font-bold active:bg-zinc-700">−</button>
+              <span className="w-6 text-center font-bold text-white">{penalty}</span>
+              <button type="button" onClick={() => setPenalty(penalty + 1)} className="w-9 h-9 bg-lime-400 text-black rounded-full font-bold active:bg-lime-300">+</button>
             </div>
           </div>
         </div>
 
         {/* メモ */}
         <div>
-          <label className="text-sm font-medium text-gray-700">メモ</label>
+          <label className="text-sm font-medium text-zinc-300">メモ</label>
           <input
             value={memo}
             onChange={e => setMemo(e.target.value)}
-            className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-base"
+            className="mt-1 w-full border border-zinc-700 bg-zinc-800 text-white rounded-xl px-3 py-2.5 text-base placeholder:text-zinc-500"
             placeholder="任意"
           />
         </div>
@@ -187,14 +190,14 @@ function ShotInputModal({
         <div className="flex gap-3">
           <button
             onClick={save}
-            className="flex-1 bg-green-800 text-white py-3.5 rounded-2xl font-bold text-base active:bg-green-900"
+            className="flex-1 bg-lime-400 text-black py-3.5 rounded-2xl font-bold text-base active:bg-lime-300"
           >
             保存
           </button>
           {onDelete && (
             <button
               onClick={onDelete}
-              className="px-4 py-3.5 rounded-2xl bg-red-50 text-red-600 font-bold active:bg-red-100"
+              className="px-4 py-3.5 rounded-2xl bg-red-900/40 text-red-400 font-bold active:bg-red-900/60"
             >
               <Trash2 size={18} />
             </button>
@@ -225,7 +228,7 @@ export function HoleInputPage() {
 
   if (!round || !hole) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-400">
+      <div className="flex items-center justify-center h-full text-zinc-500">
         ラウンドが見つかりません
       </div>
     );
@@ -282,34 +285,33 @@ export function HoleInputPage() {
     : `${scoreDiff}`;
 
   return (
-    <div className="min-h-full bg-gray-50 flex flex-col">
+    <div className="min-h-full bg-[#0f0f0f] flex flex-col">
       {/* Header */}
-      <div className="bg-green-800 text-white px-4 pt-12 pb-4">
+      <div className="bg-zinc-950 text-white px-4 pt-12 pb-4 border-b border-zinc-800">
         <div className="flex items-center justify-between mb-1">
-          {/* ▼ 日付を追加 */}
-          <p className="text-green-200 text-xs">{round.date} · {round.courseName}</p>
+          <p className="text-zinc-500 text-xs">{round.date} · {round.courseName}</p>
           <button
             onClick={() => navigate(`/rounds/${roundId}/scorecard`)}
-            className="flex items-center gap-1 text-green-200 text-xs"
+            className="flex items-center gap-1 text-zinc-500 text-xs active:text-lime-400"
           >
             <TableProperties size={14} /> スコアカード
           </button>
         </div>
         <div className="flex items-baseline justify-between">
           <div>
-            <span className="text-4xl font-black">Hole {holeNo}</span>
-            <span className="text-green-300 ml-2 text-sm">{holeNo} / {totalHoles}</span>
+            <span className="text-4xl font-black text-white">Hole {holeNo}</span>
+            <span className="text-zinc-500 ml-2 text-sm">{holeNo} / {totalHoles}</span>
           </div>
           <div className="text-right">
-            <p className="text-green-200 text-xs">Par {hole.par}</p>
-            {hole.yardage && <p className="text-green-200 text-xs">{hole.yardage}y</p>}
+            <p className="text-zinc-500 text-xs">Par {hole.par}</p>
+            {hole.yardage && <p className="text-zinc-500 text-xs">{hole.yardage}y</p>}
           </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {/* Score card */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-zinc-900 rounded-2xl p-4">
           <div className="mb-1">
             <Counter
               label="スコア"
@@ -321,55 +323,55 @@ export function HoleInputPage() {
             />
             {hole.score != null && (
               <p className={`text-xs text-right font-medium mt-0.5 ${
-                scoreDiff < 0 ? 'text-blue-600' : scoreDiff === 0 ? 'text-green-700' : scoreDiff === 1 ? 'text-yellow-600' : 'text-red-500'
+                scoreDiff < 0 ? 'text-blue-400' : scoreDiff === 0 ? 'text-lime-400' : scoreDiff === 1 ? 'text-zinc-400' : 'text-red-400'
               }`}>
                 {scoreDiffLabel}
               </p>
             )}
           </div>
-          <div className="border-t border-gray-100 pt-2">
+          <div className="border-t border-zinc-800 pt-2">
             <Counter label="パット数" value={hole.putts ?? 0} onChange={v => setField('putts', v || undefined)} />
           </div>
           <div className="pt-1 pb-1 flex items-center justify-between">
-            <span className="text-gray-400 text-xs pl-1">パットトータル距離 (y)</span>
+            <span className="text-zinc-500 text-xs pl-1">パットトータル距離 (y)</span>
             <input
               type="number"
               inputMode="numeric"
               value={hole.puttDistance ?? ''}
               onChange={e => setField('puttDistance', e.target.value ? Number(e.target.value) : undefined)}
-              className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-sm text-right font-medium text-gray-700"
+              className="w-20 border border-zinc-700 bg-zinc-800 text-white rounded-lg px-2 py-1 text-sm text-right font-medium"
               placeholder="−"
             />
           </div>
-          <div className="border-t border-gray-100 pt-2 grid grid-cols-2 gap-2">
+          <div className="border-t border-zinc-800 pt-2 grid grid-cols-2 gap-2">
             <Counter label="OB" value={hole.ob ?? 0} onChange={v => setField('ob', v)} compact />
             <Counter label="ペナルティ" value={hole.penalty ?? 0} onChange={v => setField('penalty', v)} compact />
           </div>
         </div>
 
         {/* Memo */}
-        <div className="bg-white rounded-2xl px-4 py-3 shadow-sm">
+        <div className="bg-zinc-900 rounded-2xl px-4 py-3">
           <input
             value={hole.memo ?? ''}
             onChange={e => setField('memo', e.target.value || undefined)}
-            className="w-full text-sm text-gray-700 placeholder-gray-300 outline-none"
+            className="w-full text-sm text-zinc-300 placeholder-zinc-600 outline-none bg-transparent"
             placeholder="ホールメモ（任意）"
           />
         </div>
 
         {/* Shot log */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="bg-zinc-900 rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-gray-900">ショットログ</h3>
+            <h3 className="font-bold text-white">ショットログ</h3>
             <button
               onClick={addShot}
-              className="flex items-center gap-1 bg-green-800 text-white px-3 py-1.5 rounded-xl text-sm font-medium active:bg-green-900"
+              className="flex items-center gap-1 bg-lime-400 text-black px-3 py-1.5 rounded-xl text-sm font-medium active:bg-lime-300"
             >
               <Plus size={14} /> 追加
             </button>
           </div>
           {hole.shots.length === 0 && (
-            <p className="text-xs text-gray-400 text-center py-2">ショットを追加してください</p>
+            <p className="text-xs text-zinc-600 text-center py-2">ショットを追加してください</p>
           )}
           <div className="space-y-2">
             {hole.shots.map((shot, i) => {
@@ -377,38 +379,38 @@ export function HoleInputPage() {
               return (
                 <div
                   key={shot.id}
-                  className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0"
+                  className="flex items-center justify-between py-2 border-b border-zinc-800 last:border-0"
                 >
                   <div className="flex items-start gap-2">
-                    <span className="text-xs text-gray-400 font-mono w-4">{i + 1}</span>
+                    <span className="text-xs text-zinc-600 font-mono w-4">{i + 1}</span>
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {shot.shotTypes?.map(t => (
-                          <span key={t} className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full font-medium">
+                          <span key={t} className="text-xs bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded-full font-medium">
                             {SHOT_TYPE_LABELS[t]}
                           </span>
                         ))}
-                        {club && <span className="text-sm font-bold text-gray-900">{club.name}</span>}
-                        {shot.distance && <span className="text-xs text-gray-500">{shot.distance}y</span>}
+                        {club && <span className="text-sm font-bold text-white">{club.name}</span>}
+                        {shot.distance && <span className="text-xs text-zinc-500">{shot.distance}y</span>}
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         {shot.lies?.map(l => (
-                          <span key={l} className="text-xs text-gray-500">{l}</span>
+                          <span key={l} className="text-xs text-zinc-500">{l}</span>
                         ))}
                         {shot.results?.map(r => (
                           <span key={r} className={`text-xs font-medium ${
-                            ['ナイス', '普通', 'ナイスアウト'].includes(r) ? 'text-green-700' : 'text-red-500'
+                            GOOD_RESULTS.includes(r) ? 'text-lime-400' : 'text-red-400'
                           }`}>
                             {r}
                           </span>
                         ))}
-                        {shot.direction && shot.direction !== '真っ直ぐ' && (
-                          <span className="text-xs text-orange-500">{shot.direction}</span>
+                        {shot.direction && !HIDDEN_DIRECTIONS.includes(shot.direction) && (
+                          <span className="text-xs text-orange-400">{shot.direction}</span>
                         )}
                       </div>
                     </div>
                   </div>
-                  <button onClick={() => editShot(i)} className="p-1.5 text-gray-400 active:text-green-700">
+                  <button onClick={() => editShot(i)} className="p-1.5 text-zinc-600 active:text-lime-400">
                     <Pencil size={14} />
                   </button>
                 </div>
@@ -419,7 +421,7 @@ export function HoleInputPage() {
       </div>
 
       {/* Bottom navigation */}
-      <div className="bg-white border-t border-gray-200 px-4 pt-3 pb-3 space-y-1.5">
+      <div className="bg-zinc-950 border-t border-zinc-800 px-4 pt-3 pb-3 space-y-1.5">
         {/* Holes 1-9 */}
         <div className="grid grid-cols-9 gap-1">
           {round.holes.slice(0, 9).map(h => (
@@ -427,9 +429,9 @@ export function HoleInputPage() {
               key={h.holeNo}
               onClick={() => navigateHole(h.holeNo)}
               className={`py-2 rounded-lg text-xs font-bold transition-colors ${
-                h.holeNo === holeNo ? 'bg-green-800 text-white'
-                  : h.score != null ? 'bg-green-100 text-green-800'
-                  : 'bg-gray-100 text-gray-500'
+                h.holeNo === holeNo ? 'bg-lime-400 text-black'
+                  : h.score != null ? 'bg-zinc-800 text-lime-400'
+                  : 'bg-zinc-800 text-zinc-500'
               }`}
             >
               {h.holeNo}
@@ -444,9 +446,9 @@ export function HoleInputPage() {
                 key={h.holeNo}
                 onClick={() => navigateHole(h.holeNo)}
                 className={`py-2 rounded-lg text-xs font-bold transition-colors ${
-                  h.holeNo === holeNo ? 'bg-green-800 text-white'
-                    : h.score != null ? 'bg-green-100 text-green-800'
-                    : 'bg-gray-100 text-gray-500'
+                  h.holeNo === holeNo ? 'bg-lime-400 text-black'
+                    : h.score != null ? 'bg-zinc-800 text-lime-400'
+                    : 'bg-zinc-800 text-zinc-500'
                 }`}
               >
                 {h.holeNo}
@@ -459,21 +461,21 @@ export function HoleInputPage() {
           <button
             onClick={() => navigateHole(holeNo - 1)}
             disabled={holeNo === 1}
-            className="flex items-center gap-1 px-4 py-2 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium disabled:opacity-30 active:bg-gray-200"
+            className="flex items-center gap-1 px-4 py-2 rounded-xl bg-zinc-800 text-zinc-400 text-sm font-medium disabled:opacity-30 active:bg-zinc-700"
           >
             <ChevronLeft size={16} /> 前のホール
           </button>
           {isLast ? (
             <button
               onClick={finishRound}
-              className="bg-green-800 text-white px-5 py-2 rounded-xl text-sm font-bold active:bg-green-900"
+              className="bg-lime-400 text-black px-5 py-2 rounded-xl text-sm font-bold active:bg-lime-300"
             >
               ラウンド完了
             </button>
           ) : (
             <button
               onClick={() => navigateHole(holeNo + 1)}
-              className="flex items-center gap-1 px-4 py-2 rounded-xl bg-green-800 text-white text-sm font-medium active:bg-green-900"
+              className="flex items-center gap-1 px-4 py-2 rounded-xl bg-lime-400 text-black text-sm font-medium active:bg-lime-300"
             >
               次のホール <ChevronRight size={16} />
             </button>
