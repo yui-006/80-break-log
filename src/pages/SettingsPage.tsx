@@ -156,7 +156,7 @@ export function SettingsPage() {
                         </button>
                       )}
                       {state.clubSets.length > 1 && (
-                        <button onClick={() => handleDeleteSet(set.id)} className="text-zinc-700 active:text-red-400">
+                        <button onClick={() => handleDeleteSet(set.id)} className="text-zinc-500 active:text-red-400">
                           <Trash2 size={14} />
                         </button>
                       )}
@@ -191,18 +191,18 @@ export function SettingsPage() {
                   <span className="font-bold text-white text-sm">{c.name}</span>
                   <span className="text-xs text-zinc-500 ml-2">{CATEGORY_LABEL[c.category] ?? c.category}</span>
                   {c.head && <span className="text-xs text-zinc-500 ml-1">{c.head}</span>}
-                  <div className="text-xs text-zinc-600">
+                  <div className="text-xs text-zinc-500">
                     {[c.loft != null && `${c.loft}°`, c.shaft, c.flex].filter(Boolean).join(' / ')}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => setEditingClub(c)} className="text-xs text-lime-400 px-2 py-1 rounded-lg bg-lime-400/10">編集</button>
-                  <button onClick={() => deleteClub(c.id)} className="text-zinc-600 active:text-red-400"><Trash2 size={14} /></button>
+                  <button onClick={() => deleteClub(c.id)} className="text-zinc-500 active:text-red-400"><Trash2 size={14} /></button>
                 </div>
               </div>
             ))}
             {sortedClubs.length === 0 && (
-              <p className="text-xs text-zinc-600 text-center py-3">クラブを追加してください</p>
+              <p className="text-xs text-zinc-500 text-center py-3">クラブを追加してください</p>
             )}
           </div>
         </Card>
@@ -222,7 +222,7 @@ export function SettingsPage() {
               <Upload size={18} /> JSONインポート
             </button>
             <input ref={fileRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
-            <p className="text-xs text-zinc-600">インポートすると現在のデータはすべて上書きされます</p>
+            <p className="text-xs text-zinc-500">インポートすると現在のデータはすべて上書きされます</p>
           </div>
         </Card>
 
@@ -247,7 +247,7 @@ export function SettingsPage() {
           )}
         </Card>
 
-        <div className="text-center text-xs text-zinc-700 pb-4">
+        <div className="text-center text-xs text-zinc-600 pb-4">
           <p>80 Break Log</p>
           <p>データはこのブラウザ内にのみ保存されます</p>
         </div>
