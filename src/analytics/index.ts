@@ -392,13 +392,13 @@ export type ClubDistanceStat = {
   median: number;
 };
 
-/** フルショットのみを対象としたクラブ別飛距離統計（最大・最小・平均・中央値）。 */
+/** ティーショット・フルショットを対象としたクラブ別飛距離統計（最大・最小・平均・中央値）。 */
 export function calcClubDistanceStats(rounds: Round[]): ClubDistanceStat[] {
   const map = new Map<string, number[]>();
   for (const round of rounds) {
     for (const hole of round.holes) {
       for (const shot of hole.shots) {
-        if (!shot.clubId || !hasType(shot, 'full')) continue;
+        if (!shot.clubId || !hasType(shot, 'tee', 'full')) continue;
         if (shot.distance == null || shot.distance <= 0) continue;
         const list = map.get(shot.clubId) ?? [];
         list.push(shot.distance);
