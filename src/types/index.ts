@@ -130,6 +130,20 @@ export type PracticeItem = {
   recentMissCount: number;
 };
 
+export type PracticeMenuItem = {
+  id: string;
+  name: string;
+  createdAt: string;
+};
+
+export type PracticeLogEntry = {
+  id: string;
+  date: string; // YYYY-MM-DD
+  menuName: string;
+  ballCount?: number;
+  createdAt: string;
+};
+
 export type CourseSearchResult = {
   id: string;
   name: string;
@@ -145,6 +159,8 @@ export type AppData = {
   clubs: Club[];
   clubSets?: ClubSet[];
   activeClubSetId?: string;
+  practiceMenuItems?: PracticeMenuItem[];
+  practiceLogs?: PracticeLogEntry[];
   exportedAt: string;
   version: string;
 };

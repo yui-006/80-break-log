@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import type { Course, Round, Club, ClubSet, AppData } from '../types';
+import type { Course, Round, Club, ClubSet, PracticeMenuItem, PracticeLogEntry, AppData } from '../types';
 import { storage } from '../db/indexedDB';
 import { INITIAL_CLUBS } from '../data/initial';
 
@@ -12,12 +12,14 @@ type AppState = {
   clubs: Club[];
   clubSets: ClubSet[];
   activeClubSetId: string | null;
+  practiceMenuItems: PracticeMenuItem[];
+  practiceLogs: PracticeLogEntry[];
   loading: boolean;
   error: string | null;
 };
 
 type AppAction =
-  | { type: 'LOAD'; payload: { courses: Course[]; rounds: Round[]; clubSets: ClubSet[]; activeClubSetId: string | null } }
+  | { type: 'LOAD'; payload: { courses: Course[]; rounds: Round[]; clubSets: ClubSet[]; activeClubSetId: string | null; practiceMenuItems: PracticeMenuItem[]; practiceLogs: PracticeLogEntry[] } }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'UPSERT_COURSE'; payload: Course }
@@ -27,6 +29,10 @@ type AppAction =
   | { type: 'UPSERT_CLUB_SET'; payload: ClubSet }
   | { type: 'DELETE_CLUB_SET'; payload: string }
   | { type: 'SET_ACTIVE_CLUB_SET'; payload: string }
+  | { type: 'UPSERT_PRACTICE_MENU_ITEM'; payload: PracticeMenuItem }
+  | { type: 'DELETE_PRACTICE_MENU_ITEM'; payload: string }
+  | { type: 'UPSERT_PRACTICE_LOG'; payload: PracticeLogEntry }
+  | { type: 'DELETE_PRACTICE_LOG'; payload: string }
   | { type: 'LOAD_DATA'; payload: AppData };
 
 function activeClubs(sets: ClubSet[], activeId: string | null): Club[] {
@@ -73,6 +79,24 @@ function reducer(state: AppState, action: AppAction): AppState {
       const clubs = activeClubs(state.clubSets, action.payload);
       return { ...state, activeClubSetId: action.payload, clubs };
     }
+    case 'UPSERT_PRACTICE_MENU_ITEM':
+      return {
+        ...state,
+        practiceMenuItems: state.practiceMenuItems.some(m => m.id === action.payload.id)
+          ? state.practiceMenuItems.map(m => m.id === action.payload.id ? action.payload : m)
+          : [...state.practiceMenuItems, action.payload],
+      };
+    case 'DELETE_PRACTICE_MENU_ITEM':
+      return { ...state, practiceMenuItems: state.practiceMenuItems.filter(m => m.id !== action.payload) };
+    case 'UPSERT_PRACTICE_LOG':
+      return {
+        ...state,
+        practiceLogs: state.practiceLogs.some(l => l.id === action.payload.id)
+          ? state.practiceLogs.map(l => l.id === action.payload.id ? action.payload : l)
+          : [...state.practiceLogs, action.payload],
+      };
+    case 'DELETE_PRACTICE_LOG':
+      return { ...state, practiceLogs: state.practiceLogs.filter(l => l.id !== action.payload) };
     case 'LOAD_DATA': {
       const sets = action.payload.clubSets ?? [];
       const activeId = action.payload.activeClubSetId ?? sets[0]?.id ?? null;
@@ -83,6 +107,8 @@ function reducer(state: AppState, action: AppAction): AppState {
         clubSets: sets,
         activeClubSetId: activeId,
         clubs: activeClubs(sets, activeId),
+        practiceMenuItems: action.payload.practiceMenuItems ?? [],
+        practiceLogs: action.payload.practiceLogs ?? [],
       };
     }
     default:
@@ -101,6 +127,10 @@ type AppContextType = {
   saveClubSet: (set: ClubSet) => Promise<void>;
   deleteClubSet: (id: string) => Promise<void>;
   setActiveClubSet: (id: string) => void;
+  savePracticeMenuItem: (item: PracticeMenuItem) => Promise<void>;
+  deletePracticeMenuItem: (id: string) => Promise<void>;
+  savePracticeLog: (entry: PracticeLogEntry) => Promise<void>;
+  deletePracticeLog: (id: string) => Promise<void>;
   exportData: () => Promise<string>;
   importData: (json: string) => Promise<void>;
   clearAll: () => Promise<void>;
@@ -115,6 +145,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     clubs: [],
     clubSets: [],
     activeClubSetId: null,
+    practiceMenuItems: [],
+    practiceLogs: [],
     loading: true,
     error: null,
   });
@@ -122,11 +154,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const [courses, rounds, existingClubs, clubSets] = await Promise.all([
+        const [courses, rounds, existingClubs, clubSets, practiceMenuItems, practiceLogs] = await Promise.all([
           storage.getCourses(),
           storage.getRounds(),
           storage.getClubs(),
           storage.getClubSets(),
+          storage.getPracticeMenuItems(),
+          storage.getPracticeLogs(),
         ]);
 
         let sets = clubSets;
@@ -150,7 +184,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const activeId = sets.find(s => s.id === storedId)?.id ?? sets[0].id;
         if (!storedId) localStorage.setItem(ACTIVE_SET_KEY, activeId);
 
-        dispatch({ type: 'LOAD', payload: { courses, rounds, clubSets: sets, activeClubSetId: activeId } });
+        dispatch({ type: 'LOAD', payload: { courses, rounds, clubSets: sets, activeClubSetId: activeId, practiceMenuItems, practiceLogs } });
       } catch {
         dispatch({ type: 'SET_ERROR', payload: 'データの読み込みに失敗しました' });
         dispatch({ type: 'SET_LOADING', payload: false });
@@ -215,6 +249,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'SET_ACTIVE_CLUB_SET', payload: id });
   }, []);
 
+  const savePracticeMenuItem = useCallback(async (item: PracticeMenuItem) => {
+    await storage.savePracticeMenuItem(item);
+    dispatch({ type: 'UPSERT_PRACTICE_MENU_ITEM', payload: item });
+  }, []);
+
+  const deletePracticeMenuItem = useCallback(async (id: string) => {
+    await storage.deletePracticeMenuItem(id);
+    dispatch({ type: 'DELETE_PRACTICE_MENU_ITEM', payload: id });
+  }, []);
+
+  const savePracticeLog = useCallback(async (entry: PracticeLogEntry) => {
+    await storage.savePracticeLog(entry);
+    dispatch({ type: 'UPSERT_PRACTICE_LOG', payload: entry });
+  }, []);
+
+  const deletePracticeLog = useCallback(async (id: string) => {
+    await storage.deletePracticeLog(id);
+    dispatch({ type: 'DELETE_PRACTICE_LOG', payload: id });
+  }, []);
+
   const exportData = useCallback(async () => {
     const data = await storage.exportData();
     return JSON.stringify(data, null, 2);
@@ -236,7 +290,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     await storage.saveClubSet(defaultSet);
     localStorage.setItem(ACTIVE_SET_KEY, defaultSet.id);
-    dispatch({ type: 'LOAD', payload: { courses: [], rounds: [], clubSets: [defaultSet], activeClubSetId: defaultSet.id } });
+    dispatch({ type: 'LOAD', payload: { courses: [], rounds: [], clubSets: [defaultSet], activeClubSetId: defaultSet.id, practiceMenuItems: [], practiceLogs: [] } });
   }, []);
 
   return (
@@ -246,6 +300,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveRound, deleteRound,
       saveClub, deleteClub,
       saveClubSet, deleteClubSet, setActiveClubSet,
+      savePracticeMenuItem, deletePracticeMenuItem,
+      savePracticeLog, deletePracticeLog,
       exportData, importData, clearAll,
     }}>
       {children}
