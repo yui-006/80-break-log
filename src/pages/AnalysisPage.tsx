@@ -1,7 +1,7 @@
 import { useApp } from '../context/AppContext';
 import { calcScoreStats, calcLosses, calcMissTendencies, calcMissTrend, calcClubStats, calcClubDistanceStats } from '../analytics';
 import type { ClubStat } from '../analytics';
-import { INITIAL_CLUBS } from '../data/initial';
+import { INITIAL_CLUBS, CLUB_ORDER } from '../data/initial';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   BarChart, Bar, ResponsiveContainer,
@@ -41,7 +41,7 @@ export function AnalysisPage() {
   });
 
   const losses = calcLosses(completedRounds);
-  const clubOrder = new Map(clubs.map((c, i) => [c.id, i]));
+  const clubOrder = new Map(CLUB_ORDER.map((id, i) => [id, i]));
   const clubStats = calcClubStats(completedRounds)
     .slice()
     .sort((a, b) => (clubOrder.get(a.clubId) ?? 999) - (clubOrder.get(b.clubId) ?? 999));
