@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { calcLosses, calcMissTendencies, generatePracticeMenu } from '../analytics';
 import type { PracticeLogEntry } from '../types';
-import { Target, CheckCircle2, Circle, Flame, Plus, Trash2 } from 'lucide-react';
+import { Target, CheckCircle2, Circle, Flame, Plus, Trash2, Pencil } from 'lucide-react';
+import { Modal } from '../components/ui/Modal';
 
 const PRIORITY_COLORS = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-lime-500', 'bg-blue-500', 'bg-purple-500'];
 const HEATMAP_WEEKS = 10;
@@ -29,7 +30,6 @@ function getWeekStart(dateStr: string): string {
   return fmtDate(d);
 }
 
-// 当週(未記録でも可)または前週まで遡って、連続して練習記録のある週数を数える
 function calcWeeklyStreak(logs: PracticeLogEntry[]): number {
   if (logs.length === 0) return 0;
   const weeksWithLogs = new Set(logs.map(l => getWeekStart(l.date)));
@@ -44,9 +44,15 @@ function calcWeeklyStreak(logs: PracticeLogEntry[]): number {
   return streak;
 }
 
+type EditForm = { date: string; menuName: string; ballCount: string };
+
 export function PracticePage() {
   const { state, savePracticeMenuItem, deletePracticeMenuItem, savePracticeLog, deletePracticeLog } = useApp();
   const [newMenuName, setNewMenuName] = useState('');
+  // キー入力ごとにDBへ保存しないようローカルで管理し、blurで確定する
+  const [ballInputs, setBallInputs] = useState<Record<string, string>>({});
+  const [editingLog, setEditingLog] = useState<PracticeLogEntry | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>({ date: '', menuName: '', ballCount: '' });
 
   const recentRounds = state.rounds
     .filter(r => r.status === 'completed')
@@ -66,23 +72,36 @@ export function PracticePage() {
     .reduce((s, l) => s + (l.ballCount ?? 0), 0);
   const weekStarts = Array.from({ length: HEATMAP_WEEKS }, (_, i) => addWeeks(thisWeekStart, -(HEATMAP_WEEKS - 1 - i)));
 
+  const allLogDays = Array.from(new Set(state.practiceLogs.map(l => l.date)))
+    .sort((a, b) => b.localeCompare(a));
+
   function findTodayEntry(menuName: string) {
     return todaysLogs.find(l => l.menuName === menuName);
+  }
+
+  // ローカル入力値を優先して表示。未編集ならDBの値を返す
+  function getBallInput(menuName: string, entry: PracticeLogEntry | undefined): string {
+    if (menuName in ballInputs) return ballInputs[menuName];
+    return entry?.ballCount != null ? String(entry.ballCount) : '';
   }
 
   async function toggleMenu(menuName: string) {
     const existing = findTodayEntry(menuName);
     if (existing) {
+      setBallInputs(prev => { const n = { ...prev }; delete n[menuName]; return n; });
       await deletePracticeLog(existing.id);
     } else {
       await savePracticeLog({ id: genId(), date: today, menuName, createdAt: new Date().toISOString() });
     }
   }
 
-  async function updateBallCount(menuName: string, value: string) {
+  async function commitBallCount(menuName: string) {
+    const value = ballInputs[menuName];
+    if (value === undefined) return;
     const existing = findTodayEntry(menuName);
     if (!existing) return;
     await savePracticeLog({ ...existing, ballCount: value === '' ? undefined : Number(value) });
+    setBallInputs(prev => { const n = { ...prev }; delete n[menuName]; return n; });
   }
 
   async function handleAddCustomMenu() {
@@ -92,9 +111,27 @@ export function PracticePage() {
     setNewMenuName('');
   }
 
-  const recentLogDays = Array.from(new Set(state.practiceLogs.map(l => l.date)))
-    .sort((a, b) => b.localeCompare(a))
-    .slice(0, 14);
+  function openEditModal(log: PracticeLogEntry) {
+    setEditingLog(log);
+    setEditForm({
+      date: log.date,
+      menuName: log.menuName,
+      ballCount: log.ballCount != null ? String(log.ballCount) : '',
+    });
+  }
+
+  async function handleSaveEdit() {
+    if (!editingLog) return;
+    const ballCount = editForm.ballCount === '' ? undefined : Number(editForm.ballCount);
+    await savePracticeLog({ ...editingLog, date: editForm.date, menuName: editForm.menuName.trim(), ballCount });
+    setEditingLog(null);
+  }
+
+  async function handleDeleteEdit() {
+    if (!editingLog) return;
+    await deletePracticeLog(editingLog.id);
+    setEditingLog(null);
+  }
 
   return (
     <div className="min-h-full bg-[#0f0f0f]">
@@ -199,8 +236,10 @@ export function PracticePage() {
                   <label className="text-xs text-zinc-500">球数</label>
                   <input
                     type="number"
-                    value={entry?.ballCount ?? ''}
-                    onChange={e => updateBallCount(item.category, e.target.value)}
+                    inputMode="numeric"
+                    value={getBallInput(item.category, entry)}
+                    onChange={e => setBallInputs(prev => ({ ...prev, [item.category]: e.target.value }))}
+                    onBlur={() => commitBallCount(item.category)}
                     placeholder="0"
                     className="w-20 bg-zinc-800 text-white text-sm rounded-lg px-2 py-1 border border-zinc-700"
                   />
@@ -232,8 +271,10 @@ export function PracticePage() {
                   {checked && (
                     <input
                       type="number"
-                      value={entry?.ballCount ?? ''}
-                      onChange={e => updateBallCount(m.name, e.target.value)}
+                      inputMode="numeric"
+                      value={getBallInput(m.name, entry)}
+                      onChange={e => setBallInputs(prev => ({ ...prev, [m.name]: e.target.value }))}
+                      onBlur={() => commitBallCount(m.name)}
                       placeholder="球数"
                       className="w-16 bg-zinc-800 text-white text-xs rounded-lg px-2 py-1 border border-zinc-700 flex-shrink-0"
                     />
@@ -259,21 +300,35 @@ export function PracticePage() {
           </div>
         </div>
 
-        {/* History */}
-        {recentLogDays.length > 0 && (
+        {/* History — 全ログを個別に表示、タップで編集 */}
+        {allLogDays.length > 0 && (
           <div className="bg-zinc-900 rounded-2xl p-4">
             <h2 className="font-bold text-white mb-3">練習履歴</h2>
-            <div className="space-y-2">
-              {recentLogDays.map(date => {
-                const dayLogs = state.practiceLogs.filter(l => l.date === date);
-                const totalBalls = dayLogs.reduce((s, l) => s + (l.ballCount ?? 0), 0);
+            <div className="space-y-0">
+              {allLogDays.map((date, di) => {
+                const dayLogs = state.practiceLogs
+                  .filter(l => l.date === date)
+                  .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
                 return (
-                  <div key={date} className="flex items-start justify-between gap-3 text-sm border-b border-zinc-800 pb-2 last:border-0 last:pb-0">
-                    <div className="min-w-0">
-                      <p className="text-zinc-300 font-medium">{date}</p>
-                      <p className="text-xs text-zinc-500 truncate">{dayLogs.map(l => l.menuName).join(' / ')}</p>
+                  <div key={date} className={`py-2.5 ${di < allLogDays.length - 1 ? 'border-b border-zinc-800' : ''}`}>
+                    <p className="text-xs text-zinc-500 mb-1.5">{date}</p>
+                    <div className="space-y-1.5">
+                      {dayLogs.map(log => (
+                        <button
+                          key={log.id}
+                          onClick={() => openEditModal(log)}
+                          className="w-full flex items-center justify-between gap-3 active:opacity-60"
+                        >
+                          <span className="text-sm text-zinc-300 text-left flex-1 truncate">{log.menuName}</span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {log.ballCount != null && (
+                              <span className="text-xs text-lime-400">{log.ballCount}球</span>
+                            )}
+                            <Pencil size={13} className="text-zinc-600" />
+                          </div>
+                        </button>
+                      ))}
                     </div>
-                    {totalBalls > 0 && <span className="text-xs text-lime-400 flex-shrink-0">{totalBalls}球</span>}
                   </div>
                 );
               })}
@@ -288,6 +343,56 @@ export function PracticePage() {
           </div>
         )}
       </div>
+
+      {/* 編集モーダル */}
+      {editingLog && (
+        <Modal title="練習記録を編集" onClose={() => setEditingLog(null)}>
+          <div className="py-4 space-y-4">
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1.5">日付</label>
+              <input
+                type="date"
+                value={editForm.date}
+                onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))}
+                className="w-full bg-zinc-800 text-white rounded-xl px-3 py-2.5 border border-zinc-700"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1.5">メニュー名</label>
+              <input
+                type="text"
+                value={editForm.menuName}
+                onChange={e => setEditForm(f => ({ ...f, menuName: e.target.value }))}
+                className="w-full bg-zinc-800 text-white rounded-xl px-3 py-2.5 border border-zinc-700 placeholder:text-zinc-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1.5">球数</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={editForm.ballCount}
+                onChange={e => setEditForm(f => ({ ...f, ballCount: e.target.value }))}
+                placeholder="未入力"
+                className="w-full bg-zinc-800 text-white rounded-xl px-3 py-2.5 border border-zinc-700 placeholder:text-zinc-500"
+              />
+            </div>
+            <button
+              onClick={handleSaveEdit}
+              disabled={!editForm.date || !editForm.menuName.trim()}
+              className="w-full bg-lime-400 text-black py-3 rounded-xl font-bold disabled:opacity-40"
+            >
+              保存
+            </button>
+            <button
+              onClick={handleDeleteEdit}
+              className="w-full text-red-400 py-2.5 rounded-xl text-sm font-medium active:opacity-70"
+            >
+              この記録を削除
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
