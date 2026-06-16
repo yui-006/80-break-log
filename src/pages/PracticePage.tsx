@@ -1,5 +1,5 @@
 import { useApp } from '../context/AppContext';
-import { calcLosses, generatePracticeMenu } from '../analytics';
+import { calcLosses, calcMissTendencies, generatePracticeMenu } from '../analytics';
 import { Target, CheckCircle2 } from 'lucide-react';
 
 const PRIORITY_COLORS = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-lime-500', 'bg-blue-500', 'bg-purple-500'];
@@ -28,7 +28,7 @@ export function PracticePage() {
   }
 
   const losses = calcLosses(recentRounds);
-  const menu = generatePracticeMenu(losses);
+  const menu = generatePracticeMenu(calcMissTendencies(recentRounds));
 
   return (
     <div className="min-h-full bg-[#0f0f0f]">

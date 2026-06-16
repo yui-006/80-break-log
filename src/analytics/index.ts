@@ -1,7 +1,108 @@
 import type { Round, RoundHole, Shot, LossCategory, ScoreStats, PracticeItem } from '../types';
 
-const MISS_RESULTS = new Set(['右', '左', 'ショート', 'オーバー', 'トップ', 'ハーフトップ', 'チョロ', 'ダフリ', '当たりそこない', 'あまり飛ばない', 'シャンク', 'OB', 'ペナルティ', 'ホームラン', '1回で出ない']);
-const IRON_CLUBS = new Set(['6i', '7i', '8i', '9i', 'pw']);
+const MISS_RESULTS = new Set(['右', '左', 'ショート', 'オーバー', 'トップ', 'ハーフトップ', 'チョロ', 'ダフリ', 'ざっくり', '当たりそこない', 'あまり飛ばない', 'シャンク', 'OB', 'ペナルティ', 'ホームラン', '1回で出ない']);
+
+const LONG_IRON_CLUBS = new Set(['6i', '7i']);
+const SHORT_IRON_CLUBS = new Set(['8i', '9i']);
+const WEDGE_CLUBS = new Set(['pw', '48', '52', '58']);
+
+// 85打を目標とするプレイヤーが各クラブで出すべき想定キャリー距離(y)。
+// この85%未満しか出なかったショットは「距離不足」として扱う。
+const CLUB_EXPECTED_DISTANCE: Record<string, number> = {
+  '1w': 200, '3w': 180, '7w': 160, '5u': 150,
+  '6i': 140, '7i': 130, '8i': 120, '9i': 110,
+  'pw': 95, '48': 80, '52': 60, '58': 40,
+};
+
+function hasResult(shot: Shot, ...vals: string[]) {
+  return shot.results?.some(r => vals.includes(r)) ?? false;
+}
+function hasType(shot: Shot, ...types: string[]) {
+  return shot.shotTypes?.some(t => types.includes(t)) ?? false;
+}
+function hasLie(shot: Shot, ...lies: string[]) {
+  return shot.lies?.some(l => lies.includes(l)) ?? false;
+}
+function isObPenaltyShot(shot: Shot) {
+  return hasResult(shot, 'OB', 'ペナルティ') || (shot.penalty ?? 0) > 0;
+}
+
+type ShotCategoryDef = {
+  key: string;
+  label: string;
+  // 1回あたりの推定ロス打数。「スコア85を目指すなら、このミスは1回起きると
+  // 何打分のリカバリーが必要になるか」を基準に見積もった値（経験的な仮定値）。
+  lossPerCount: number;
+  match: (shot: Shot) => boolean;
+};
+
+const SHOT_CATEGORIES: ShotCategoryDef[] = [
+  {
+    // 2y以内のショートパットを外すと、ほぼ確実に+1打。
+    key: 'short_putt', label: 'ショートパットミス', lossPerCount: 1.0,
+    match: shot => hasType(shot, 'putt') && (shot.distance ?? 0) <= 2 && hasResult(shot, 'ショート', '右', '左'),
+  },
+  {
+    // バンカーで1回で出られないと、ほぼそのまま+1打。
+    key: 'bunker', label: 'バンカー失点', lossPerCount: 1.0,
+    match: shot => hasType(shot, 'bunker') && hasResult(shot, '1回で出ない', 'ホームラン', 'オーバー'),
+  },
+  {
+    // アプローチでチョロ・トップ・ダフリ・ざっくり = ショットが機能せず実質+1打。
+    key: 'approach_contact', label: 'アプローチコンタクトミス', lossPerCount: 1.0,
+    match: shot => hasType(shot, 'approach') && hasResult(shot, 'チョロ', 'トップ', 'ダフリ', 'ざっくり'),
+  },
+  {
+    // ロングアイアンは距離があるため方向ミスでグリーンを大きく外しやすい。
+    key: 'iron_dir_long', label: 'ロングアイアン方向ミス(6-7i)', lossPerCount: 0.7,
+    match: shot => LONG_IRON_CLUBS.has(shot.clubId ?? '') &&
+      (['右', '左', '右ペラ'].includes(shot.direction ?? '') || hasResult(shot, '引っかけ', '捕まらず右')),
+  },
+  {
+    // 傾斜・悪いライからのミスは追加のリカバリーが必要になりやすい。
+    key: 'slope', label: '傾斜・ライ対応', lossPerCount: 0.5,
+    match: shot => hasLie(shot, '左足上がり', '左足下がり', 'つま先上がり', 'つま先下がり', 'ラフ') &&
+      (shot.results?.some(r => MISS_RESULTS.has(r)) ?? false),
+  },
+  {
+    // ショートアイアンは距離が短く方向ミスの影響もやや小さい。
+    key: 'iron_dir_short', label: 'ショートアイアン方向ミス(8-9i)', lossPerCount: 0.5,
+    match: shot => SHORT_IRON_CLUBS.has(shot.clubId ?? '') &&
+      (['右', '左', '右ペラ'].includes(shot.direction ?? '') || hasResult(shot, '引っかけ', '捕まらず右')),
+  },
+  {
+    // コントロールショットの距離ミス(寄せ切れない)はグリーンを外す程度の影響。
+    key: 'half_miss', label: 'コントロールショット距離ミス', lossPerCount: 0.5,
+    match: shot => hasType(shot, 'half') && hasResult(shot, 'ショート', 'オーバー', 'トップ', 'ダフリ'),
+  },
+  {
+    // コンタクトは悪くないがオーバー・ショートのみ = ピンに寄らない程度の影響。
+    key: 'approach_distance', label: 'アプローチ距離感', lossPerCount: 0.5,
+    match: shot => hasType(shot, 'approach') &&
+      !hasResult(shot, 'チョロ', 'トップ', 'ダフリ', 'ざっくり') &&
+      hasResult(shot, 'オーバー', 'ショート'),
+  },
+  {
+    // 7W/5Uのフルショットミスはフェアウェイを外す程度の影響。
+    key: 'wood_miss', label: '7W/5Uフルショットミス', lossPerCount: 0.5,
+    match: shot => ['7w', '5u'].includes(shot.clubId ?? '') &&
+      hasType(shot, 'full') && hasResult(shot, 'チョロ', 'トップ', '右', '左', 'ダフリ'),
+  },
+  {
+    // 想定距離の85%未満しか出なかった = グリーンに大幅にショートし次打の難易度が上がる。
+    key: 'distance_shortfall', label: '距離不足（想定の85%未満）', lossPerCount: 0.5,
+    match: shot => {
+      const exp = CLUB_EXPECTED_DISTANCE[shot.clubId ?? ''];
+      return exp != null && (shot.distance ?? 0) > 0 && (shot.distance as number) <= exp * 0.85;
+    },
+  },
+  {
+    // ウェッジは距離が短くリカバリーしやすいため影響は小さい。
+    key: 'iron_dir_wedge', label: 'ウェッジ方向ミス(PW以下)', lossPerCount: 0.3,
+    match: shot => WEDGE_CLUBS.has(shot.clubId ?? '') &&
+      (['右', '左', '右ペラ'].includes(shot.direction ?? '') || hasResult(shot, '引っかけ', '捕まらず右')),
+  },
+];
 
 export function calcScoreStats(holes: RoundHole[]): ScoreStats {
   const scored = holes.filter(h => h.score !== undefined);
@@ -53,79 +154,67 @@ export function calcScoreStats(holes: RoundHole[]): ScoreStats {
   };
 }
 
-export function calcLosses(rounds: Round[]): LossCategory[] {
-  return calcLossesFromHoles(rounds.flatMap(r => r.holes));
-}
-
-export function calcLossesFromHoles(holes: RoundHole[]): LossCategory[] {
+// mece=true: 1ショットにつき最も影響の大きいカテゴリ1つだけをカウント（スコアロス推定用、合計が実際の打数差に近くなるように）
+// mece=false: 該当する全カテゴリを重複カウント（個人のミス傾向集計用、練習対象の特定やミスの推移確認に使う）
+function buildLossList(holes: RoundHole[], mece: boolean): LossCategory[] {
   const entries: { shot: Shot; hole: RoundHole }[] = holes.flatMap(hole => hole.shots.map(shot => ({ shot, hole })));
-  const recentHoles = holes;
 
-  const hasResult = (shot: Shot, ...vals: string[]) =>
-    shot.results?.some(r => vals.includes(r)) ?? false;
-  const hasType = (shot: Shot, ...types: string[]) =>
-    shot.shotTypes?.some(t => types.includes(t)) ?? false;
-  const hasLie = (shot: Shot, ...lies: string[]) =>
-    shot.lies?.some(l => lies.includes(l)) ?? false;
+  const obPenaltyCount = holes.reduce((s, h) => s + (h.ob ?? 0) + (h.penalty ?? 0), 0);
+  const threePuttCount = holes.filter(h => (h.putts ?? 0) >= 3).length;
 
-  const obPenaltyCount =
-    entries.filter(({ shot }) =>
-      hasResult(shot, 'OB', 'ペナルティ') || (shot.penalty ?? 0) > 0
-    ).length +
-    recentHoles.reduce((s, h) => s + (h.ob ?? 0) + (h.penalty ?? 0), 0);
-
-  const threePuttCount = recentHoles.filter(h => (h.putts ?? 0) >= 3).length;
-
-  const halfMissCount = entries.filter(({ shot }) =>
-    hasType(shot, 'half') && hasResult(shot, 'ショート', 'オーバー', 'トップ', 'ダフリ')
-  ).length;
-
-  const approachMissCount = entries.filter(({ shot }) =>
-    hasType(shot, 'approach') && hasResult(shot, 'チョロ', 'トップ', 'ダフリ', 'オーバー', 'ショート')
-  ).length;
-
-  const woodMissCount = entries.filter(({ shot }) =>
-    ['7w', '5u'].includes(shot.clubId ?? '') &&
-    hasType(shot, 'full') &&
-    hasResult(shot, 'チョロ', 'トップ', '右', '左', 'ダフリ')
-  ).length;
-
-  const ironDirMissCount = entries.filter(({ shot }) =>
-    IRON_CLUBS.has(shot.clubId ?? '') &&
-    (
-      ['右', '左', '右ペラ'].includes(shot.direction ?? '') ||
-      hasResult(shot, '引っかけ', '捕まらず右')
-    )
-  ).length;
-
-  const slopeMissCount = entries.filter(({ shot }) =>
-    hasLie(shot, '左足上がり', '左足下がり', 'つま先上がり', 'つま先下がり', 'ラフ') &&
-    (shot.results?.some(r => MISS_RESULTS.has(r)) ?? false)
-  ).length;
-
-  const bunkerMissCount = entries.filter(({ shot }) =>
-    hasType(shot, 'bunker') && hasResult(shot, '1回で出ない', 'ホームラン', 'オーバー')
-  ).length;
-
-  const shortPuttMissCount = entries.filter(({ shot }) =>
-    hasType(shot, 'putt') && (shot.distance ?? 0) <= 2 && hasResult(shot, 'ショート', '右', '左')
-  ).length;
+  const shotCounts = new Map<string, number>();
+  for (const { shot } of entries) {
+    if (mece) {
+      if (isObPenaltyShot(shot)) continue; // OB・ペナルティ側で既にカウント済み
+      const matches = SHOT_CATEGORIES.filter(c => c.match(shot));
+      if (matches.length === 0) continue;
+      const best = matches.reduce((a, b) => (b.lossPerCount > a.lossPerCount ? b : a));
+      shotCounts.set(best.key, (shotCounts.get(best.key) ?? 0) + 1);
+    } else {
+      for (const c of SHOT_CATEGORIES) {
+        if (c.match(shot)) shotCounts.set(c.key, (shotCounts.get(c.key) ?? 0) + 1);
+      }
+    }
+  }
 
   const raw: Array<{ key: string; label: string; count: number; lossPerCount: number }> = [
-    { key: 'ob_penalty',   label: 'OB・ペナルティ',         count: obPenaltyCount,    lossPerCount: 1.5 },
-    { key: 'three_putt',   label: '3パット',                 count: threePuttCount,    lossPerCount: 1   },
-    { key: 'half_miss',    label: 'ハーフショット距離感',    count: halfMissCount,     lossPerCount: 1   },
-    { key: 'approach',     label: 'アプローチコンタクトミス', count: approachMissCount, lossPerCount: 1   },
-    { key: 'wood_miss',    label: '7W/5Uフルショットミス',   count: woodMissCount,     lossPerCount: 1   },
-    { key: 'iron_dir',     label: 'アイアン方向ミス',        count: ironDirMissCount,  lossPerCount: 0.5 },
-    { key: 'slope',        label: '傾斜・ライ対応',          count: slopeMissCount,    lossPerCount: 1   },
-    { key: 'bunker',       label: 'バンカー失点',            count: bunkerMissCount,   lossPerCount: 1   },
-    { key: 'short_putt',   label: 'ショートパットミス',      count: shortPuttMissCount, lossPerCount: 1  },
+    { key: 'ob_penalty', label: 'OB・ペナルティ', count: obPenaltyCount, lossPerCount: 2.0 },
+    { key: 'three_putt', label: '3パット', count: threePuttCount, lossPerCount: 1.0 },
+    ...SHOT_CATEGORIES.map(c => ({ key: c.key, label: c.label, count: shotCounts.get(c.key) ?? 0, lossPerCount: c.lossPerCount })),
   ];
 
   return raw
     .map(r => ({ ...r, estimatedLoss: Math.round(r.count * r.lossPerCount * 10) / 10 }))
     .sort((a, b) => b.estimatedLoss - a.estimatedLoss);
+}
+
+/** スコアロス推定用（MECE: 1ショット=1カテゴリのみ）。「改善ポイント」「失点ランキング」等の打数表示に使う。 */
+export function calcLossesFromHoles(holes: RoundHole[]): LossCategory[] {
+  return buildLossList(holes, true);
+}
+
+export function calcLosses(rounds: Round[]): LossCategory[] {
+  return calcLossesFromHoles(rounds.flatMap(r => r.holes));
+}
+
+/** 個人のミス傾向集計用（重複カウントあり）。練習メニューの選定やミスの推移確認に使う。 */
+export function calcMissTendenciesFromHoles(holes: RoundHole[]): LossCategory[] {
+  return buildLossList(holes, false);
+}
+
+export function calcMissTendencies(rounds: Round[]): LossCategory[] {
+  return calcMissTendenciesFromHoles(rounds.flatMap(r => r.holes));
+}
+
+/** ラウンドごとのミス傾向（回数）の推移。最近のラウンドでミスが減っているかを確認するために使う。 */
+export function calcMissTrend(rounds: Round[]): Array<Record<string, number | string>> {
+  const sorted = rounds.slice().sort((a, b) => a.date.localeCompare(b.date));
+  return sorted.map(r => {
+    const tendencies = calcMissTendenciesFromHoles(r.holes);
+    const row: Record<string, number | string> = { date: r.date.slice(5), roundId: r.id };
+    for (const t of tendencies) row[t.key] = t.count;
+    return row;
+  });
 }
 
 export function generatePracticeMenu(losses: LossCategory[]): PracticeItem[] {
@@ -148,11 +237,17 @@ export function generatePracticeMenu(losses: LossCategory[]): PracticeItem[] {
       content: '48°で30〜70yの距離感練習',
       checklist: ['30y・50y・70yの打ち分け', 'スイング幅を固定して距離を合わせる', '同じクラブで10球ずつ打って平均距離を確認'],
     },
-    approach: {
-      category: 'アプローチ',
-      reason: 'アプローチのコンタクトミスが多いです',
+    approach_contact: {
+      category: 'アプローチ コンタクト',
+      reason: 'アプローチのチョロ・トップ・ダフリ・ざっくりが多いです',
       content: 'チップショットのコンタクト改善練習',
       checklist: ['ハンドファーストのアドレス確認', '体重を左足に乗せたままインパクト', 'ターフを取るドリル20球'],
+    },
+    approach_distance: {
+      category: 'アプローチ 距離感',
+      reason: 'アプローチのオーバー・ショートが多いです（コンタクトは悪くない）',
+      content: '10y/20y/30yの距離打ち分け練習',
+      checklist: ['同じスイングでボール位置だけ変えて距離を打ち分ける', '10球ごとに着地点を確認', 'ピン近辺3m以内を目標にする'],
     },
     wood_miss: {
       category: '7W/5Uフルショット',
@@ -160,11 +255,29 @@ export function generatePracticeMenu(losses: LossCategory[]): PracticeItem[] {
       content: '5U/7Wの直打ちミート率向上練習',
       checklist: ['ティーアップして正しいソールを確認', 'スイング軌道をインサイドアウトに意識', 'ハーフショットから始めてフルに戻す'],
     },
-    iron_dir: {
-      category: 'アイアン方向',
-      reason: 'アイアンの方向性にばらつきがあります',
-      content: 'アイアンの方向性改善・フェース管理練習',
+    iron_dir_long: {
+      category: 'ロングアイアン方向(6-7i)',
+      reason: '6i・7iの方向性にばらつきがあります',
+      content: 'ロングアイアンの方向性改善・フェース管理練習',
       checklist: ['フェースの向きを確認してアドレス', 'グリップ・肘の形を鏡でチェック', '7iで10球連続コースセンターを狙う'],
+    },
+    iron_dir_short: {
+      category: 'ショートアイアン方向(8-9i)',
+      reason: '8i・9iの方向性にばらつきがあります',
+      content: 'ショートアイアンの方向性改善練習',
+      checklist: ['フェースの向きを確認してアドレス', 'スタンス・アライメントをクラブで確認', '9iで10球連続コースセンターを狙う'],
+    },
+    iron_dir_wedge: {
+      category: 'ウェッジ方向(PW以下)',
+      reason: 'PW以下の方向性にばらつきがあります',
+      content: 'ウェッジの方向性改善練習',
+      checklist: ['フェースの向きを確認してアドレス', '小さい振り幅でも再現性を意識', 'PWで10球連続コースセンターを狙う'],
+    },
+    distance_shortfall: {
+      category: '距離不足',
+      reason: '想定距離の85%未満しか出ていないショットが多いです',
+      content: 'クラブ別の最大距離・平均距離の確認練習',
+      checklist: ['各クラブ10球打って平均キャリーを計測', 'ミート率(芯を外していないか)を確認', '無理に距離を出そうとせず80%スイングの距離も把握'],
     },
     slope: {
       category: '傾斜・ライ対応',

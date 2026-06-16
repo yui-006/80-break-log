@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { calcScoreStats, calcLosses, generatePracticeMenu } from '../analytics';
+import { calcScoreStats, calcLosses, calcMissTendencies, generatePracticeMenu } from '../analytics';
 import { Bell, Flag, ChevronRight, Play, Target, TrendingDown } from 'lucide-react';
 
 function ScoreCircle({ score, par }: { score: number; par: number }) {
@@ -40,7 +40,7 @@ export function HomePage() {
   const recentRounds = completedRounds.slice(0, 3);
   const rawLosses = recentRounds.length > 0 ? calcLosses(recentRounds).filter(l => l.count > 0).slice(0, 5) : [];
   const losses = rawLosses.map(l => ({ ...l, perRoundLoss: Math.round(l.estimatedLoss / recentRounds.length * 10) / 10 }));
-  const topActions = recentRounds.length > 0 ? generatePracticeMenu(calcLosses(recentRounds)).slice(0, 2) : [];
+  const topActions = recentRounds.length > 0 ? generatePracticeMenu(calcMissTendencies(recentRounds)).slice(0, 2) : [];
   const totalLossPotential = Math.round(losses.reduce((s, l) => s + l.perRoundLoss, 0) * 10) / 10;
 
   const recentStats = recentRounds.map(r => calcScoreStats(r.holes));

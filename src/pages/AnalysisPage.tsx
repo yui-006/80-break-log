@@ -1,5 +1,5 @@
 import { useApp } from '../context/AppContext';
-import { calcScoreStats, calcLosses, calcClubStats } from '../analytics';
+import { calcScoreStats, calcLosses, calcMissTendencies, calcMissTrend, calcClubStats } from '../analytics';
 import type { ClubStat } from '../analytics';
 import { INITIAL_CLUBS } from '../data/initial';
 import {
@@ -43,6 +43,11 @@ export function AnalysisPage() {
   const losses = calcLosses(completedRounds);
   const clubStats = calcClubStats(completedRounds);
 
+  const topMissTendencies = calcMissTendencies(completedRounds).filter(l => l.count > 0).slice(0, 4);
+  const missTrendRounds = completedRounds.slice(-8);
+  const missTrendData = calcMissTrend(missTrendRounds);
+  const MISS_TREND_COLORS = ['#f87171', '#fb923c', '#facc15', '#60a5fa'];
+
   const recentRounds = completedRounds.slice(-3);
   const recentStats = recentRounds.map(r => calcScoreStats(r.holes));
   const avgScore = recentStats.length > 0
@@ -83,6 +88,26 @@ export function AnalysisPage() {
             </div>
           )}
         </div>
+
+        {/* Miss tendency trend (duplicate-counted, per round) */}
+        {topMissTendencies.length > 0 && (
+          <div className="bg-zinc-900 rounded-2xl p-4">
+            <h2 className="font-bold text-white mb-1">ミス傾向の推移</h2>
+            <p className="text-zinc-500 text-xs mb-3">よく出るミスがラウンドごとに増えているか減っているか（1ショットで複数カウントあり）</p>
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={missTrendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+                <XAxis dataKey="date" tick={CHART_TICK} />
+                <YAxis tick={CHART_TICK} allowDecimals={false} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <Legend wrapperStyle={LEGEND_STYLE} />
+                {topMissTendencies.map((l, i) => (
+                  <Line key={l.key} type="monotone" dataKey={l.key} stroke={MISS_TREND_COLORS[i]} strokeWidth={2} dot={{ r: 3 }} name={l.label} />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
 
         {/* Score trend */}
         <div className="bg-zinc-900 rounded-2xl p-4">
