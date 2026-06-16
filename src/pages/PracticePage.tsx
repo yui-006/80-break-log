@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { calcLosses, calcMissTendencies, generatePracticeMenu } from '../analytics';
+import { calcMissTendencies, generatePracticeMenu } from '../analytics';
 import type { PracticeLogEntry } from '../types';
-import { Target, CheckCircle2, Circle, Flame, Plus, Trash2, Pencil } from 'lucide-react';
+import { Flame, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 
-const PRIORITY_COLORS = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-lime-500', 'bg-blue-500', 'bg-purple-500'];
 const HEATMAP_WEEKS = 10;
 
 function genId() { return crypto.randomUUID(); }
@@ -29,7 +28,6 @@ function getWeekStart(dateStr: string): string {
   d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
   return fmtDate(d);
 }
-
 function calcWeeklyStreak(logs: PracticeLogEntry[]): number {
   if (logs.length === 0) return 0;
   const weeksWithLogs = new Set(logs.map(l => getWeekStart(l.date)));
@@ -37,11 +35,16 @@ function calcWeeklyStreak(logs: PracticeLogEntry[]): number {
   let cursor = weeksWithLogs.has(thisWeek) ? thisWeek : addWeeks(thisWeek, -1);
   if (!weeksWithLogs.has(cursor)) return 0;
   let streak = 0;
-  while (weeksWithLogs.has(cursor)) {
-    streak++;
-    cursor = addWeeks(cursor, -1);
-  }
+  while (weeksWithLogs.has(cursor)) { streak++; cursor = addWeeks(cursor, -1); }
   return streak;
+}
+
+function Checkmark() {
+  return (
+    <svg className="w-4 h-4 text-black" viewBox="0 0 16 16" fill="none">
+      <path d="M3 8l3.5 3.5L13 5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 type EditForm = { date: string; menuName: string; ballCount: string };
@@ -49,7 +52,6 @@ type EditForm = { date: string; menuName: string; ballCount: string };
 export function PracticePage() {
   const { state, savePracticeMenuItem, deletePracticeMenuItem, savePracticeLog, deletePracticeLog } = useApp();
   const [newMenuName, setNewMenuName] = useState('');
-  // キー入力ごとにDBへ保存しないようローカルで管理し、blurで確定する
   const [ballInputs, setBallInputs] = useState<Record<string, string>>({});
   const [editingLog, setEditingLog] = useState<PracticeLogEntry | null>(null);
   const [editForm, setEditForm] = useState<EditForm>({ date: '', menuName: '', ballCount: '' });
@@ -59,8 +61,9 @@ export function PracticePage() {
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 5);
 
-  const losses = recentRounds.length > 0 ? calcLosses(recentRounds) : [];
-  const menu = recentRounds.length > 0 ? generatePracticeMenu(calcMissTendencies(recentRounds)) : [];
+  const suggestedMenu = recentRounds.length > 0
+    ? generatePracticeMenu(calcMissTendencies(recentRounds))
+    : [];
 
   const today = todayStr();
   const todaysLogs = state.practiceLogs.filter(l => l.date === today);
@@ -70,16 +73,20 @@ export function PracticePage() {
   const weekBallTotal = state.practiceLogs
     .filter(l => getWeekStart(l.date) === thisWeekStart)
     .reduce((s, l) => s + (l.ballCount ?? 0), 0);
-  const weekStarts = Array.from({ length: HEATMAP_WEEKS }, (_, i) => addWeeks(thisWeekStart, -(HEATMAP_WEEKS - 1 - i)));
+  const weekStarts = Array.from({ length: HEATMAP_WEEKS }, (_, i) =>
+    addWeeks(thisWeekStart, -(HEATMAP_WEEKS - 1 - i))
+  );
 
   const allLogDays = Array.from(new Set(state.practiceLogs.map(l => l.date)))
     .sort((a, b) => b.localeCompare(a));
+
+  const todayCheckedCount = todaysLogs.length;
+  const todayTotalBalls = todaysLogs.reduce((s, l) => s + (l.ballCount ?? 0), 0);
 
   function findTodayEntry(menuName: string) {
     return todaysLogs.find(l => l.menuName === menuName);
   }
 
-  // ローカル入力値を優先して表示。未編集ならDBの値を返す
   function getBallInput(menuName: string, entry: PracticeLogEntry | undefined): string {
     if (menuName in ballInputs) return ballInputs[menuName];
     return entry?.ballCount != null ? String(entry.ballCount) : '';
@@ -135,22 +142,161 @@ export function PracticePage() {
 
   return (
     <div className="min-h-full bg-[#0f0f0f]">
-      <div className="px-5 pt-12 pb-5">
-        <h1 className="text-2xl font-bold text-white">練習</h1>
-        <p className="text-zinc-500 text-sm mt-1">
-          {recentRounds.length > 0 ? `直近${recentRounds.length}ラウンドの分析から自動生成` : 'ラウンドを記録すると分析からも練習メニューが提案されます'}
-        </p>
+      {/* Header */}
+      <div className="px-5 pt-12 pb-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">練習</h1>
+          <p className="text-zinc-500 text-xs mt-0.5">{today}</p>
+        </div>
+        <div className="flex items-center gap-1.5 bg-zinc-900 rounded-xl px-3 py-2">
+          <Flame size={15} className={streak > 0 ? 'text-orange-400' : 'text-zinc-600'} />
+          <span className={`text-sm font-bold ${streak > 0 ? 'text-white' : 'text-zinc-600'}`}>
+            {streak > 0 ? `${streak}週` : '−'}
+          </span>
+        </div>
       </div>
 
       <div className="px-4 pb-6 space-y-4">
-        {/* Streak & heatmap */}
+
+        {/* ── 今日の練習チェックリスト ── */}
+        <div className="bg-zinc-900 rounded-2xl overflow-hidden">
+          {/* カードヘッダー */}
+          <div className="px-4 pt-4 pb-3 flex items-center justify-between border-b border-zinc-800">
+            <h2 className="font-bold text-white text-sm">今日の練習</h2>
+            <div className="flex items-center gap-2">
+              {todayCheckedCount > 0 && (
+                <span className="text-xs text-zinc-500">{todayCheckedCount}件完了</span>
+              )}
+              {todayTotalBalls > 0 && (
+                <span className="text-xs text-lime-400 font-bold">{todayTotalBalls}球</span>
+              )}
+            </div>
+          </div>
+
+          {/* AI提案メニュー */}
+          {suggestedMenu.map((item, i) => {
+            const entry = findTodayEntry(item.category);
+            const checked = !!entry;
+            return (
+              <div
+                key={`ai-${i}`}
+                className={`flex items-center px-4 border-b border-zinc-800/50 min-h-[56px] ${checked ? 'bg-lime-400/5' : ''}`}
+              >
+                <button
+                  onClick={() => toggleMenu(item.category)}
+                  className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center mr-3 active:scale-95 transition-transform ${checked ? 'bg-lime-400 border-lime-400' : 'border-zinc-600'}`}
+                >
+                  {checked && <Checkmark />}
+                </button>
+                <span className={`flex-1 text-sm font-medium min-w-0 truncate ${checked ? 'text-white' : 'text-zinc-300'}`}>
+                  {item.category}
+                </span>
+                <span className="text-[10px] bg-lime-400/15 text-lime-400 px-1.5 py-0.5 rounded font-bold mr-2 flex-shrink-0">
+                  提案
+                </span>
+                {checked && (
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={getBallInput(item.category, entry)}
+                      onChange={e => setBallInputs(prev => ({ ...prev, [item.category]: e.target.value }))}
+                      onBlur={() => commitBallCount(item.category)}
+                      placeholder="球数"
+                      className="w-16 bg-zinc-800 text-white text-sm rounded-lg px-2 py-1.5 border border-zinc-700 text-right placeholder:text-zinc-600"
+                    />
+                    <span className="text-xs text-zinc-500">球</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* カスタムメニュー */}
+          {state.practiceMenuItems.map((m) => {
+            const entry = findTodayEntry(m.name);
+            const checked = !!entry;
+            return (
+              <div
+                key={m.id}
+                className={`flex items-center px-4 border-b border-zinc-800/50 min-h-[56px] ${checked ? 'bg-lime-400/5' : ''}`}
+              >
+                <button
+                  onClick={() => toggleMenu(m.name)}
+                  className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center mr-3 active:scale-95 transition-transform ${checked ? 'bg-lime-400 border-lime-400' : 'border-zinc-600'}`}
+                >
+                  {checked && <Checkmark />}
+                </button>
+                <span className={`flex-1 text-sm font-medium min-w-0 truncate ${checked ? 'text-white' : 'text-zinc-300'}`}>
+                  {m.name}
+                </span>
+                {checked ? (
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={getBallInput(m.name, entry)}
+                      onChange={e => setBallInputs(prev => ({ ...prev, [m.name]: e.target.value }))}
+                      onBlur={() => commitBallCount(m.name)}
+                      placeholder="球数"
+                      className="w-16 bg-zinc-800 text-white text-sm rounded-lg px-2 py-1.5 border border-zinc-700 text-right placeholder:text-zinc-600"
+                    />
+                    <span className="text-xs text-zinc-500">球</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => deletePracticeMenuItem(m.id)}
+                    className="text-zinc-700 active:text-red-400 p-2 flex-shrink-0"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+
+          {/* 空状態 */}
+          {suggestedMenu.length === 0 && state.practiceMenuItems.length === 0 && (
+            <div className="px-4 py-6 text-center text-zinc-600 text-sm">
+              下の入力欄からメニューを追加しよう
+            </div>
+          )}
+
+          {/* メニュー追加 */}
+          <div className="flex items-center gap-2 px-4 py-3.5">
+            <Plus size={16} className="text-zinc-500 flex-shrink-0" />
+            <input
+              value={newMenuName}
+              onChange={e => setNewMenuName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAddCustomMenu()}
+              placeholder="メニューを追加..."
+              className="flex-1 bg-transparent text-white text-sm placeholder:text-zinc-600 outline-none"
+            />
+            {newMenuName.trim() && (
+              <button
+                onClick={handleAddCustomMenu}
+                className="text-lime-400 text-sm font-bold flex-shrink-0"
+              >
+                追加
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ── ヒートマップ ── */}
         <div className="bg-zinc-900 rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Flame size={18} className={streak > 0 ? 'text-orange-400' : 'text-zinc-600'} />
-              <span className="text-white font-bold text-sm">{streak > 0 ? `${streak}週連続で練習中` : '今週から記録を始めよう'}</span>
+              <Flame size={15} className={streak > 0 ? 'text-orange-400' : 'text-zinc-600'} />
+              <span className={`text-sm font-bold ${streak > 0 ? 'text-white' : 'text-zinc-500'}`}>
+                {streak > 0 ? `${streak}週連続で練習中` : '今週から記録を始めよう'}
+              </span>
             </div>
-            <span className="text-xs text-zinc-500">今週 {weekBallTotal}球</span>
+            {weekBallTotal > 0 && (
+              <span className="text-xs text-zinc-500">今週 {weekBallTotal}球</span>
+            )}
           </div>
           <div className="flex gap-1 overflow-x-auto pb-1">
             {weekStarts.map(ws => (
@@ -172,139 +318,11 @@ export function PracticePage() {
           </div>
         </div>
 
-        {/* Loss summary */}
-        {losses.filter(l => l.count > 0).length > 0 && (
-          <div className="bg-zinc-900 rounded-2xl p-4">
-            <h2 className="font-bold text-white mb-3">失点ランキング</h2>
-            <div className="space-y-2">
-              {losses.filter(l => l.count > 0).slice(0, 5).map((l, i) => (
-                <div key={l.key} className="flex items-center gap-3">
-                  <span className={`text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${PRIORITY_COLORS[i]}`}>
-                    {i + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-zinc-300">{l.label}</span>
-                      <span className="font-bold text-red-400">+{l.estimatedLoss}</span>
-                    </div>
-                    <div className="bg-zinc-800 rounded-full h-1.5">
-                      <div
-                        className="bg-red-500 h-1.5 rounded-full"
-                        style={{ width: `${Math.min(100, (l.estimatedLoss / (losses[0]?.estimatedLoss || 1)) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Suggested practice items w/ logging */}
-        {menu.map((item, i) => {
-          const entry = findTodayEntry(item.category);
-          const checked = !!entry;
-          return (
-            <div key={i} className="bg-zinc-900 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className={`text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${PRIORITY_COLORS[i]}`}>
-                  {item.priority}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-white text-sm">{item.category}</h3>
-                  <p className="text-xs text-zinc-500">{item.reason}</p>
-                </div>
-                <button onClick={() => toggleMenu(item.category)} className="flex-shrink-0 active:opacity-70">
-                  {checked
-                    ? <CheckCircle2 size={26} className="text-lime-400" />
-                    : <Circle size={26} className="text-zinc-600" />}
-                </button>
-              </div>
-              <div className="bg-zinc-800 rounded-xl p-3 mb-3">
-                <p className="text-sm font-medium text-lime-400">{item.content}</p>
-              </div>
-              <div className="space-y-1.5">
-                {item.checklist.map((c, j) => (
-                  <div key={j} className="flex items-start gap-2">
-                    <CheckCircle2 size={14} className="text-zinc-600 flex-shrink-0 mt-0.5" />
-                    <span className="text-xs text-zinc-400">{c}</span>
-                  </div>
-                ))}
-              </div>
-              {checked && (
-                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-zinc-800">
-                  <label className="text-xs text-zinc-500">球数</label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    value={getBallInput(item.category, entry)}
-                    onChange={e => setBallInputs(prev => ({ ...prev, [item.category]: e.target.value }))}
-                    onBlur={() => commitBallCount(item.category)}
-                    placeholder="0"
-                    className="w-20 bg-zinc-800 text-white text-sm rounded-lg px-2 py-1 border border-zinc-700"
-                  />
-                  <span className="text-xs text-zinc-500">球</span>
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Custom menu */}
-        <div className="bg-zinc-900 rounded-2xl p-4">
-          <h2 className="font-bold text-white mb-3">自分の練習メニュー</h2>
-          <div className="space-y-2 mb-3">
-            {state.practiceMenuItems.length === 0 && (
-              <p className="text-xs text-zinc-500">メニューを追加して記録しましょう</p>
-            )}
-            {state.practiceMenuItems.map(m => {
-              const entry = findTodayEntry(m.name);
-              const checked = !!entry;
-              return (
-                <div key={m.id} className="flex items-center gap-3 border-b border-zinc-800 pb-2 last:border-0 last:pb-0">
-                  <button onClick={() => toggleMenu(m.name)} className="flex-shrink-0 active:opacity-70">
-                    {checked
-                      ? <CheckCircle2 size={22} className="text-lime-400" />
-                      : <Circle size={22} className="text-zinc-600" />}
-                  </button>
-                  <span className="flex-1 text-sm text-zinc-300 min-w-0 truncate">{m.name}</span>
-                  {checked && (
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      value={getBallInput(m.name, entry)}
-                      onChange={e => setBallInputs(prev => ({ ...prev, [m.name]: e.target.value }))}
-                      onBlur={() => commitBallCount(m.name)}
-                      placeholder="球数"
-                      className="w-16 bg-zinc-800 text-white text-xs rounded-lg px-2 py-1 border border-zinc-700 flex-shrink-0"
-                    />
-                  )}
-                  <button onClick={() => deletePracticeMenuItem(m.id)} className="text-zinc-600 active:text-red-400 flex-shrink-0">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex gap-2">
-            <input
-              value={newMenuName}
-              onChange={e => setNewMenuName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAddCustomMenu()}
-              placeholder="例: アプローチ50球"
-              className="flex-1 bg-zinc-800 text-white text-sm rounded-xl px-3 py-2 border border-zinc-700 placeholder:text-zinc-500"
-            />
-            <button onClick={handleAddCustomMenu} className="bg-lime-400 text-black px-3 rounded-xl font-bold flex items-center gap-1 text-sm flex-shrink-0">
-              <Plus size={16} /> 追加
-            </button>
-          </div>
-        </div>
-
-        {/* History — 全ログを個別に表示、タップで編集 */}
+        {/* ── 練習履歴 ── */}
         {allLogDays.length > 0 && (
           <div className="bg-zinc-900 rounded-2xl p-4">
-            <h2 className="font-bold text-white mb-3">練習履歴</h2>
-            <div className="space-y-0">
+            <h2 className="font-bold text-white text-sm mb-3">練習履歴</h2>
+            <div>
               {allLogDays.map((date, di) => {
                 const dayLogs = state.practiceLogs
                   .filter(l => l.date === date)
@@ -335,13 +353,6 @@ export function PracticePage() {
             </div>
           </div>
         )}
-
-        {recentRounds.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-8 text-zinc-600">
-            <Target size={36} className="text-zinc-700 mb-2" />
-            <p className="text-sm text-center">ラウンドを記録すると失点に基づく練習メニューが自動生成されます</p>
-          </div>
-        )}
       </div>
 
       {/* 編集モーダル */}
@@ -369,8 +380,9 @@ export function PracticePage() {
             <div>
               <label className="block text-xs text-zinc-400 mb-1.5">球数</label>
               <input
-                type="number"
+                type="text"
                 inputMode="numeric"
+                pattern="[0-9]*"
                 value={editForm.ballCount}
                 onChange={e => setEditForm(f => ({ ...f, ballCount: e.target.value }))}
                 placeholder="未入力"
