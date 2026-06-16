@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { calcLossesFromHoles } from '../analytics';
 import type { RoundHole, Shot, ShotType } from '../types';
 import { Counter } from '../components/ui/Counter';
 import { SelectButtons } from '../components/ui/SelectButtons';
@@ -471,6 +472,26 @@ export function HoleInputPage() {
             })}
           </div>
         </div>
+
+        {/* Improvement points (post-round review only) */}
+        {round.status === 'completed' && (() => {
+          const holeLosses = calcLossesFromHoles([hole]).filter(l => l.count > 0);
+          if (holeLosses.length === 0) return null;
+          return (
+            <div className="bg-zinc-900 rounded-2xl p-4">
+              <h3 className="font-bold text-white mb-3">改善ポイント</h3>
+              <div className="space-y-2">
+                {holeLosses.map(l => (
+                  <div key={l.key} className="flex items-center gap-3">
+                    <span className="flex-1 text-zinc-300 text-sm">{l.label}</span>
+                    <span className="text-zinc-500 text-xs">{l.count}回</span>
+                    <span className="text-red-400 font-bold text-sm whitespace-nowrap">{l.estimatedLoss}打改善</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Bottom navigation */}
