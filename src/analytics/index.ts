@@ -2,6 +2,7 @@ import type { Round, RoundHole, Shot, LossCategory, ScoreStats, PracticeItem } f
 
 const MISS_RESULTS = new Set(['右', '左', 'ショート', 'オーバー', 'トップ', 'ハーフトップ', 'チョロ', 'ダフリ', 'ざっくり', '当たりそこない', 'あまり飛ばない', 'シャンク', 'OB', 'ペナルティ', 'ホームラン', '1回で出ない']);
 
+const WOOD_CLUBS = new Set(['1w', '3w', '7w', '5u']);
 const LONG_IRON_CLUBS = new Set(['6i', '7i']);
 const SHORT_IRON_CLUBS = new Set(['8i', '9i']);
 const WEDGE_CLUBS = new Set(['pw', '48', '52', '58']);
@@ -25,6 +26,10 @@ function hasLie(shot: Shot, ...lies: string[]) {
 }
 function isObPenaltyShot(shot: Shot) {
   return hasResult(shot, 'OB', 'ペナルティ') || (shot.penalty ?? 0) > 0;
+}
+function isDistanceShortfall(shot: Shot) {
+  const exp = CLUB_EXPECTED_DISTANCE[shot.clubId ?? ''];
+  return exp != null && (shot.distance ?? 0) > 0 && (shot.distance as number) <= exp * 0.85;
 }
 
 type ShotCategoryDef = {
@@ -89,12 +94,24 @@ const SHOT_CATEGORIES: ShotCategoryDef[] = [
       hasType(shot, 'full') && hasResult(shot, 'チョロ', 'トップ', '右', '左', 'ダフリ'),
   },
   {
-    // 想定距離の85%未満しか出なかった = グリーンに大幅にショートし次打の難易度が上がる。
-    key: 'distance_shortfall', label: '距離不足（想定の85%未満）', lossPerCount: 0.5,
-    match: shot => {
-      const exp = CLUB_EXPECTED_DISTANCE[shot.clubId ?? ''];
-      return exp != null && (shot.distance ?? 0) > 0 && (shot.distance as number) <= exp * 0.85;
-    },
+    // ウッドで想定距離の85%未満 = フェアウェイで大幅にショートし次打の難易度が上がる。
+    key: 'distance_shortfall_wood', label: '距離不足（ウッド）', lossPerCount: 0.5,
+    match: shot => isDistanceShortfall(shot) && WOOD_CLUBS.has(shot.clubId ?? ''),
+  },
+  {
+    // ロングアイアンで想定距離の85%未満。
+    key: 'distance_shortfall_iron_long', label: '距離不足（ロングアイアン6-7i）', lossPerCount: 0.5,
+    match: shot => isDistanceShortfall(shot) && LONG_IRON_CLUBS.has(shot.clubId ?? ''),
+  },
+  {
+    // ショートアイアンで想定距離の85%未満。
+    key: 'distance_shortfall_iron_short', label: '距離不足（ショートアイアン8-9i）', lossPerCount: 0.5,
+    match: shot => isDistanceShortfall(shot) && SHORT_IRON_CLUBS.has(shot.clubId ?? ''),
+  },
+  {
+    // ウェッジで想定距離の85%未満。
+    key: 'distance_shortfall_wedge', label: '距離不足（ウェッジPW以下）', lossPerCount: 0.5,
+    match: shot => isDistanceShortfall(shot) && WEDGE_CLUBS.has(shot.clubId ?? ''),
   },
   {
     // ウェッジは距離が短くリカバリーしやすいため影響は小さい。
@@ -273,11 +290,29 @@ export function generatePracticeMenu(losses: LossCategory[]): PracticeItem[] {
       content: 'ウェッジの方向性改善練習',
       checklist: ['フェースの向きを確認してアドレス', '小さい振り幅でも再現性を意識', 'PWで10球連続コースセンターを狙う'],
     },
-    distance_shortfall: {
-      category: '距離不足',
-      reason: '想定距離の85%未満しか出ていないショットが多いです',
-      content: 'クラブ別の最大距離・平均距離の確認練習',
-      checklist: ['各クラブ10球打って平均キャリーを計測', 'ミート率(芯を外していないか)を確認', '無理に距離を出そうとせず80%スイングの距離も把握'],
+    distance_shortfall_wood: {
+      category: '距離不足（ウッド）',
+      reason: 'ウッドで想定距離の85%未満しか出ていないショットが多いです',
+      content: 'ウッドのミート率・最大距離確認練習',
+      checklist: ['各ウッド10球打って平均キャリーを計測', 'ミート率(芯を外していないか)を確認', '無理に距離を出そうとせず80%スイングの距離も把握'],
+    },
+    distance_shortfall_iron_long: {
+      category: '距離不足（ロングアイアン6-7i）',
+      reason: '6i・7iで想定距離の85%未満しか出ていないショットが多いです',
+      content: 'ロングアイアンのミート率・最大距離確認練習',
+      checklist: ['6i・7iで10球打って平均キャリーを計測', 'ミート率(芯を外していないか)を確認', '無理に距離を出そうとせず80%スイングの距離も把握'],
+    },
+    distance_shortfall_iron_short: {
+      category: '距離不足（ショートアイアン8-9i）',
+      reason: '8i・9iで想定距離の85%未満しか出ていないショットが多いです',
+      content: 'ショートアイアンのミート率・最大距離確認練習',
+      checklist: ['8i・9iで10球打って平均キャリーを計測', 'ミート率(芯を外していないか)を確認', '無理に距離を出そうとせず80%スイングの距離も把握'],
+    },
+    distance_shortfall_wedge: {
+      category: '距離不足（ウェッジPW以下）',
+      reason: 'PW以下で想定距離の85%未満しか出ていないショットが多いです',
+      content: 'ウェッジのミート率・最大距離確認練習',
+      checklist: ['各ウェッジ10球打って平均キャリーを計測', 'ミート率(芯を外していないか)を確認', '無理に距離を出そうとせず80%スイングの距離も把握'],
     },
     slope: {
       category: '傾斜・ライ対応',
