@@ -33,24 +33,41 @@ export function ScoreCardPage() {
     return 'text-red-400';
   }
 
+  const holePotential = (h: typeof round.holes[0]) =>
+    Math.round(calcLossesFromHoles([h]).reduce((s, l) => s + l.estimatedLoss, 0) * 10) / 10;
+
   const SubHeader = ({ label }: { label: string }) => (
     <tr className="bg-zinc-800">
-      <td colSpan={7} className="px-3 py-1 text-xs font-bold text-zinc-400">{label}</td>
+      <td colSpan={5} className="px-3 py-1 text-xs font-bold text-zinc-400">{label}</td>
     </tr>
   );
 
-  const HoleRow = ({ h }: { h: typeof round.holes[0] }) => (
-    <tr className="border-b border-zinc-800 active:bg-zinc-800 cursor-pointer"
-      onClick={() => navigate(`/rounds/${roundId}/hole/${h.holeNo}`)}>
-      <td className="px-3 py-2.5 text-sm font-medium text-zinc-400">{h.holeNo}</td>
-      <td className="px-2 py-2.5 text-sm text-center text-zinc-500">{h.par}</td>
-      <td className="px-2 py-2.5 text-sm text-center text-zinc-600">{h.yardage ?? '-'}</td>
-      <td className={`px-2 py-2.5 text-sm text-center font-bold ${scoreDiffColor(h.score, h.par)}`}>{h.score ?? '-'}</td>
-      <td className="px-2 py-2.5 text-sm text-center text-zinc-400">{h.putts ?? '-'}</td>
-      <td className="px-2 py-2.5 text-sm text-center text-red-400">{h.ob || '-'}</td>
-      <td className="px-2 py-2.5 text-sm text-center text-orange-400">{h.penalty || '-'}</td>
-    </tr>
-  );
+  const HoleRow = ({ h }: { h: typeof round.holes[0] }) => {
+    const potential = holePotential(h);
+    return (
+      <tr className="border-b border-zinc-800 active:bg-zinc-800 cursor-pointer"
+        onClick={() => navigate(`/rounds/${roundId}/hole/${h.holeNo}`)}>
+        <td className="px-3 py-2.5 text-sm font-medium text-zinc-400">{h.holeNo}</td>
+        <td className="px-2 py-2.5 text-sm text-center text-zinc-500">{h.par}</td>
+        <td className={`px-2 py-2.5 text-sm text-center font-bold ${scoreDiffColor(h.score, h.par)}`}>
+          {h.score ?? '-'}
+          {h.putts != null && <span className="text-zinc-500 font-normal text-xs">({h.putts})</span>}
+        </td>
+        <td className="px-2 py-2.5 text-sm text-center">
+          {(h.ob ?? 0) === 0 && (h.penalty ?? 0) === 0 ? (
+            <span className="text-zinc-600">-</span>
+          ) : (
+            <span className="text-xs">
+              {(h.ob ?? 0) > 0 && <span className="text-red-400">OB{h.ob}</span>}
+              {(h.ob ?? 0) > 0 && (h.penalty ?? 0) > 0 && ' '}
+              {(h.penalty ?? 0) > 0 && <span className="text-orange-400">Pen{h.penalty}</span>}
+            </span>
+          )}
+        </td>
+        <td className="px-2 py-2.5 text-sm text-center text-zinc-300 font-medium">{potential > 0 ? potential : '-'}</td>
+      </tr>
+    );
+  };
 
   const SubTotal = ({ holes, label }: { holes: typeof round.holes; label: string }) => {
     const sc = holes.reduce((s, h) => s + (h.score ?? 0), 0);
@@ -58,15 +75,24 @@ export function ScoreCardPage() {
     const putts = holes.reduce((s, h) => s + (h.putts ?? 0), 0);
     const ob = holes.reduce((s, h) => s + (h.ob ?? 0), 0);
     const pen = holes.reduce((s, h) => s + (h.penalty ?? 0), 0);
+    const potential = Math.round(holes.reduce((s, h) => s + holePotential(h), 0) * 10) / 10;
     return (
       <tr className="bg-zinc-800 font-bold">
         <td className="px-3 py-2 text-xs text-zinc-400">{label}</td>
         <td className="px-2 py-2 text-xs text-center text-zinc-500">{par}</td>
-        <td className="px-2 py-2 text-xs text-center text-zinc-600">-</td>
-        <td className="px-2 py-2 text-xs text-center text-lime-400">{sc || '-'}</td>
-        <td className="px-2 py-2 text-xs text-center text-zinc-400">{putts || '-'}</td>
-        <td className="px-2 py-2 text-xs text-center text-red-400">{ob || '-'}</td>
-        <td className="px-2 py-2 text-xs text-center text-orange-400">{pen || '-'}</td>
+        <td className="px-2 py-2 text-xs text-center text-lime-400">
+          {sc || '-'}{putts > 0 && <span className="text-zinc-400 font-normal">({putts})</span>}
+        </td>
+        <td className="px-2 py-2 text-xs text-center">
+          {ob === 0 && pen === 0 ? '-' : (
+            <>
+              {ob > 0 && <span className="text-red-400">OB{ob}</span>}
+              {ob > 0 && pen > 0 && ' '}
+              {pen > 0 && <span className="text-orange-400">Pen{pen}</span>}
+            </>
+          )}
+        </td>
+        <td className="px-2 py-2 text-xs text-center text-zinc-300">{potential > 0 ? potential : '-'}</td>
       </tr>
     );
   };
@@ -108,11 +134,9 @@ export function ScoreCardPage() {
               <tr className="bg-zinc-800 text-zinc-500 text-xs">
                 <th className="px-3 py-2 text-left">H</th>
                 <th className="px-2 py-2">Par</th>
-                <th className="px-2 py-2">Y</th>
                 <th className="px-2 py-2">Score</th>
-                <th className="px-2 py-2">Putt</th>
-                <th className="px-2 py-2">OB</th>
-                <th className="px-2 py-2">Pen</th>
+                <th className="px-2 py-2">OB/Pen</th>
+                <th className="px-2 py-2">改善打数</th>
               </tr>
             </thead>
             <tbody>
@@ -125,11 +149,21 @@ export function ScoreCardPage() {
               <tr className="bg-lime-400 text-black font-bold">
                 <td className="px-3 py-2.5 text-sm">合計</td>
                 <td className="px-2 py-2.5 text-sm text-center">{stats.totalPar}</td>
-                <td className="px-2 py-2.5 text-sm text-center">-</td>
-                <td className="px-2 py-2.5 text-sm text-center">{stats.totalScore || '-'}</td>
-                <td className="px-2 py-2.5 text-sm text-center">{stats.totalPutts || '-'}</td>
-                <td className="px-2 py-2.5 text-sm text-center">{stats.totalOB || '-'}</td>
-                <td className="px-2 py-2.5 text-sm text-center">{stats.totalPenalty || '-'}</td>
+                <td className="px-2 py-2.5 text-sm text-center">
+                  {stats.totalScore || '-'}{stats.totalPutts > 0 && <span className="font-normal">({stats.totalPutts})</span>}
+                </td>
+                <td className="px-2 py-2.5 text-sm text-center">
+                  {stats.totalOB === 0 && stats.totalPenalty === 0 ? '-' : (
+                    <>
+                      {stats.totalOB > 0 && `OB${stats.totalOB}`}
+                      {stats.totalOB > 0 && stats.totalPenalty > 0 && ' '}
+                      {stats.totalPenalty > 0 && `Pen${stats.totalPenalty}`}
+                    </>
+                  )}
+                </td>
+                <td className="px-2 py-2.5 text-sm text-center">
+                  {Math.round(round.holes.reduce((s, h) => s + holePotential(h), 0) * 10) / 10 || '-'}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -144,9 +178,14 @@ export function ScoreCardPage() {
               <h2 className="font-bold text-white mb-3">改善ポイント</h2>
               <div className="space-y-2">
                 {roundLosses.map(l => (
-                  <div key={l.key} className="flex items-center gap-3">
+                  <div
+                    key={l.key}
+                    className="flex items-center gap-3 cursor-pointer active:opacity-70"
+                    onClick={() => navigate(`/rounds/${roundId}/loss/${l.key}`)}
+                  >
                     <span className="flex-1 text-zinc-300 text-sm">{l.label}が改善されたら後</span>
                     <span className="text-red-400 font-bold text-sm whitespace-nowrap">{l.estimatedLoss}打改善</span>
+                    <ChevronRight size={14} className="text-zinc-600" />
                   </div>
                 ))}
               </div>
