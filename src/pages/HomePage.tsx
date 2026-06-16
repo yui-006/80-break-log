@@ -146,8 +146,11 @@ export function HomePage() {
               {losses.map((l, i) => (
                 <div key={l.key} className="flex items-center gap-3">
                   <span className="text-lime-400 font-black text-sm w-4 flex-shrink-0">{i + 1}</span>
-                  <span className="flex-1 text-zinc-300 text-sm">{l.label}が改善されたら後</span>
-                  <span className="text-red-400 font-bold text-sm whitespace-nowrap">{l.perRoundLoss}打/R改善</span>
+                  <span className="flex-1 text-zinc-300 text-sm">{l.label}を無くす</span>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-red-400 font-bold text-sm whitespace-nowrap">{l.perRoundLoss}打/R</p>
+                    <p className="text-zinc-500 text-xs whitespace-nowrap">現在: {l.perRoundLoss}打/R</p>
+                  </div>
                 </div>
               ))}
             </div>

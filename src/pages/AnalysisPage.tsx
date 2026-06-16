@@ -162,6 +162,9 @@ export function AnalysisPage() {
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-bold text-white w-8 flex-shrink-0">{club.name}</span>
                       <span className="text-xs text-zinc-500">{cs.total}回</span>
+                      {hasEval && (
+                        <span className="text-sm font-black text-lime-400 ml-auto">ナイス率 {pct(cs.niceCount)}%</span>
+                      )}
                     </div>
                     {hasEval ? (
                       <>
