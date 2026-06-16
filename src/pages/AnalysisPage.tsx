@@ -41,7 +41,10 @@ export function AnalysisPage() {
   });
 
   const losses = calcLosses(completedRounds);
-  const clubStats = calcClubStats(completedRounds);
+  const clubOrder = new Map(clubs.map((c, i) => [c.id, i]));
+  const clubStats = calcClubStats(completedRounds)
+    .slice()
+    .sort((a, b) => (clubOrder.get(a.clubId) ?? 999) - (clubOrder.get(b.clubId) ?? 999));
 
   const topMissTendencies = calcMissTendencies(completedRounds).filter(l => l.count > 0).slice(0, 4);
   const missTrendRounds = completedRounds.slice(-8);
