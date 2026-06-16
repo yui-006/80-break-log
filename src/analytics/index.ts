@@ -53,21 +53,13 @@ export function calcScoreStats(holes: RoundHole[]): ScoreStats {
   };
 }
 
-function allShots(rounds: Round[]): { shot: Shot; hole: RoundHole }[] {
-  const result: { shot: Shot; hole: RoundHole }[] = [];
-  for (const round of rounds) {
-    for (const hole of round.holes) {
-      for (const shot of hole.shots) {
-        result.push({ shot, hole });
-      }
-    }
-  }
-  return result;
+export function calcLosses(rounds: Round[]): LossCategory[] {
+  return calcLossesFromHoles(rounds.flatMap(r => r.holes));
 }
 
-export function calcLosses(rounds: Round[]): LossCategory[] {
-  const entries = allShots(rounds);
-  const recentHoles = rounds.flatMap(r => r.holes);
+export function calcLossesFromHoles(holes: RoundHole[]): LossCategory[] {
+  const entries: { shot: Shot; hole: RoundHole }[] = holes.flatMap(hole => hole.shots.map(shot => ({ shot, hole })));
+  const recentHoles = holes;
 
   const hasResult = (shot: Shot, ...vals: string[]) =>
     shot.results?.some(r => vals.includes(r)) ?? false;

@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { calcScoreStats } from '../analytics';
+import { calcScoreStats, calcLossesFromHoles } from '../analytics';
 import { SHOT_TYPE_LABELS, INITIAL_CLUBS } from '../data/initial';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -135,6 +135,25 @@ export function ScoreCardPage() {
           </table>
         </div>
 
+        {/* Loss summary */}
+        {(() => {
+          const roundLosses = calcLossesFromHoles(round.holes).filter(l => l.count > 0);
+          if (roundLosses.length === 0) return null;
+          return (
+            <div className="bg-zinc-900 rounded-2xl p-4">
+              <h2 className="font-bold text-white mb-3">改善ポイント</h2>
+              <div className="space-y-2">
+                {roundLosses.map(l => (
+                  <div key={l.key} className="flex items-center gap-3">
+                    <span className="flex-1 text-zinc-300 text-sm">{l.label}が改善されたら後</span>
+                    <span className="text-red-400 font-bold text-sm whitespace-nowrap">{l.estimatedLoss}打改善</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Advanced stats */}
         <div className="bg-zinc-900 rounded-2xl p-4">
           <h2 className="font-bold text-white mb-3">詳細統計</h2>
@@ -176,6 +195,19 @@ export function ScoreCardPage() {
                   </div>
                 </div>
                 {h.memo && <p className="text-xs text-zinc-500 mb-2">{h.memo}</p>}
+                {(() => {
+                  const holeLosses = calcLossesFromHoles([h]).filter(l => l.count > 0);
+                  if (holeLosses.length === 0) return null;
+                  return (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {holeLosses.map(l => (
+                        <span key={l.key} className="bg-red-400/10 text-red-400 text-xs px-2 py-0.5 rounded-md">
+                          {l.label}が改善されたら後{l.estimatedLoss}打改善
+                        </span>
+                      ))}
+                    </div>
+                  );
+                })()}
                 {h.shots.length > 0 && (
                   <div className="space-y-1 border-t border-zinc-800 pt-2">
                     {h.shots.map((s, i) => {

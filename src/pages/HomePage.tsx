@@ -40,6 +40,7 @@ export function HomePage() {
   const recentRounds = completedRounds.slice(0, 3);
   const losses = recentRounds.length > 0 ? calcLosses(recentRounds).filter(l => l.count > 0).slice(0, 5) : [];
   const topActions = recentRounds.length > 0 ? generatePracticeMenu(calcLosses(recentRounds)).slice(0, 2) : [];
+  const totalLossPotential = Math.round(losses.reduce((s, l) => s + l.estimatedLoss, 0) * 10) / 10;
 
   const recentStats = recentRounds.map(r => calcScoreStats(r.holes));
   const avgOf = (fn: (s: ReturnType<typeof calcScoreStats>) => number | null) => {
@@ -134,15 +135,18 @@ export function HomePage() {
         {/* Loss ranking */}
         {losses.length > 0 && (
           <div className="bg-zinc-900 rounded-2xl p-5">
-            <h2 className="text-white font-bold text-sm tracking-wide mb-3">
+            <h2 className="text-white font-bold text-sm tracking-wide mb-1">
               失点ランキング TOP{losses.length}
             </h2>
+            <p className="text-zinc-500 text-xs mb-3">
+              これらを改善すると、合計で約{totalLossPotential}打スコアが縮まる見込みです
+            </p>
             <div className="space-y-2.5">
               {losses.map((l, i) => (
                 <div key={l.key} className="flex items-center gap-3">
                   <span className="text-lime-400 font-black text-sm w-4 flex-shrink-0">{i + 1}</span>
-                  <span className="flex-1 text-zinc-300 text-sm">{l.label}</span>
-                  <span className="text-red-400 font-bold text-sm">+{l.estimatedLoss}</span>
+                  <span className="flex-1 text-zinc-300 text-sm">{l.label}が改善されたら後</span>
+                  <span className="text-red-400 font-bold text-sm whitespace-nowrap">{l.estimatedLoss}打改善</span>
                 </div>
               ))}
             </div>
