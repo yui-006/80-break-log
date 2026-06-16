@@ -9,7 +9,7 @@ const WEDGE_CLUBS = new Set(['pw', '48', '52', '58']);
 
 // 85打を目標とするプレイヤーが各クラブで出すべき想定キャリー距離(y)。
 // この85%未満しか出なかったショットは「距離不足」として扱う。
-const CLUB_EXPECTED_DISTANCE: Record<string, number> = {
+export const CLUB_EXPECTED_DISTANCE: Record<string, number> = {
   '1w': 220, '3w': 190, '7w': 170, '5u': 160,
   '6i': 150, '7i': 140, '8i': 130, '9i': 120,
   'pw': 105, '48': 90, '52': 70, '58': 50,
@@ -381,4 +381,42 @@ export function calcClubStats(rounds: Round[]): ClubStat[] {
   return Array.from(map.entries())
     .map(([clubId, v]) => ({ clubId, ...v }))
     .sort((a, b) => b.total - a.total);
+}
+
+export type ClubDistanceStat = {
+  clubId: string;
+  count: number;
+  max: number;
+  min: number;
+  avg: number;
+  median: number;
+};
+
+/** フルショットのみを対象としたクラブ別飛距離統計（最大・最小・平均・中央値）。 */
+export function calcClubDistanceStats(rounds: Round[]): ClubDistanceStat[] {
+  const map = new Map<string, number[]>();
+  for (const round of rounds) {
+    for (const hole of round.holes) {
+      for (const shot of hole.shots) {
+        if (!shot.clubId || !hasType(shot, 'full')) continue;
+        if (shot.distance == null || shot.distance <= 0) continue;
+        const list = map.get(shot.clubId) ?? [];
+        list.push(shot.distance);
+        map.set(shot.clubId, list);
+      }
+    }
+  }
+  return Array.from(map.entries()).map(([clubId, distances]) => {
+    const sorted = distances.slice().sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+    return {
+      clubId,
+      count: sorted.length,
+      max: sorted[sorted.length - 1],
+      min: sorted[0],
+      avg: Math.round((sorted.reduce((s, d) => s + d, 0) / sorted.length) * 10) / 10,
+      median,
+    };
+  });
 }

@@ -4,6 +4,7 @@ import type { Club, ClubSet } from '../types';
 import { Card } from '../components/ui/Card';
 import { Download, Upload, Trash2, AlertTriangle } from 'lucide-react';
 import { CLUB_ORDER } from '../data/initial';
+import { CLUB_EXPECTED_DISTANCE } from '../analytics';
 
 function genId() { return crypto.randomUUID(); }
 
@@ -191,6 +192,9 @@ export function SettingsPage() {
                   <span className="font-bold text-white text-sm">{c.name}</span>
                   <span className="text-xs text-zinc-500 ml-2">{CATEGORY_LABEL[c.category] ?? c.category}</span>
                   {c.head && <span className="text-xs text-zinc-500 ml-1">{c.head}</span>}
+                  {CLUB_EXPECTED_DISTANCE[c.id] != null && (
+                    <span className="text-xs text-lime-400 ml-1">想定 {CLUB_EXPECTED_DISTANCE[c.id]}y</span>
+                  )}
                   <div className="text-xs text-zinc-500">
                     {[c.loft != null && `${c.loft}°`, c.shaft, c.flex].filter(Boolean).join(' / ')}
                   </div>

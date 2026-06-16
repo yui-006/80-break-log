@@ -1,5 +1,5 @@
 import { useApp } from '../context/AppContext';
-import { calcScoreStats, calcLosses, calcMissTendencies, calcMissTrend, calcClubStats } from '../analytics';
+import { calcScoreStats, calcLosses, calcMissTendencies, calcMissTrend, calcClubStats, calcClubDistanceStats } from '../analytics';
 import type { ClubStat } from '../analytics';
 import { INITIAL_CLUBS } from '../data/initial';
 import {
@@ -59,6 +59,10 @@ export function AnalysisPage() {
   const avgPutts = recentStats.length > 0
     ? Math.round(recentStats.reduce((s, r) => s + r.totalPutts, 0) / recentStats.length * 10) / 10
     : null;
+
+  const distanceStats = calcClubDistanceStats(recentRounds)
+    .slice()
+    .sort((a, b) => (clubOrder.get(a.clubId) ?? 999) - (clubOrder.get(b.clubId) ?? 999));
 
   return (
     <div className="min-h-full bg-[#0f0f0f]">
@@ -190,6 +194,43 @@ export function AnalysisPage() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Club distance stats (full shots, recent rounds) */}
+        {distanceStats.length > 0 && (
+          <div className="bg-zinc-900 rounded-2xl p-4">
+            <h2 className="font-bold text-white mb-1">クラブ別飛距離（フルショット）</h2>
+            <p className="text-zinc-500 text-xs mb-3">直近{recentRounds.length}ラウンド</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs min-w-max">
+                <thead>
+                  <tr className="text-zinc-500 border-b border-zinc-800">
+                    <th className="py-1.5 text-left pr-3">クラブ</th>
+                    <th className="py-1.5 px-2 text-right">本数</th>
+                    <th className="py-1.5 px-2 text-right">最大</th>
+                    <th className="py-1.5 px-2 text-right">最小</th>
+                    <th className="py-1.5 px-2 text-right">平均</th>
+                    <th className="py-1.5 px-2 text-right">中央値</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {distanceStats.map(ds => {
+                    const club = clubs.find(c => c.id === ds.clubId);
+                    return (
+                      <tr key={ds.clubId} className="border-b border-zinc-800">
+                        <td className="py-1.5 pr-3 text-white font-bold">{club?.name ?? ds.clubId}</td>
+                        <td className="py-1.5 px-2 text-right text-zinc-400">{ds.count}</td>
+                        <td className="py-1.5 px-2 text-right text-lime-400">{ds.max}y</td>
+                        <td className="py-1.5 px-2 text-right text-zinc-400">{ds.min}y</td>
+                        <td className="py-1.5 px-2 text-right text-zinc-300">{ds.avg}y</td>
+                        <td className="py-1.5 px-2 text-right text-zinc-300">{ds.median}y</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
