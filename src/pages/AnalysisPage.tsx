@@ -149,7 +149,7 @@ export function AnalysisPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
                 <XAxis dataKey="date" tick={CHART_TICK} />
                 <YAxis tick={CHART_TICK} domain={[0, 100]} unit="%" />
-                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => `${v}%`} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => `${v}%`} />
                 <Legend wrapperStyle={LEGEND_STYLE} />
                 <Line type="monotone" dataKey="girPct" stroke="#a3e635" strokeWidth={2} dot={{ r: 3 }} name="GIR%" connectNulls />
                 <Line type="monotone" dataKey="psPct" stroke="#60a5fa" strokeWidth={2} dot={{ r: 3 }} name="パーセーブ%" connectNulls />
