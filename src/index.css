@@ -1,5 +1,45 @@
 @import "tailwindcss";
 
+/* ── Linksland design tokens ──────────────────────────────── */
+:root {
+  --bg:          #EDF1EA;
+  --surface:     #FFFFFF;
+  --surface-2:   #F1F5EC;
+  --line:        #E2E8DC;
+  --text:        #19241D;
+  --text-2:      #56635A;
+  --accent:      #2F6B4F;
+  --accent-ink:  #FFFFFF;
+  --accent-weak: #E4EFE7;
+  --good:        #3E9A6E;
+  --good-text:   #2E7D58;
+  --warn:        #C2873B;
+  --loss:        #B5503D;
+  --neutral:     #8A938B;
+  --shadow-card: 0 6px 18px rgba(25,40,30,.06);
+}
+
+/* ── Tailwind custom color utilities ─────────────────────── */
+@theme {
+  --color-ll-bg:   #EDF1EA;
+  --color-ll-surf: #FFFFFF;
+  --color-ll-s2:   #F1F5EC;
+  --color-ll-line: #E2E8DC;
+  --color-ll-ink:  #19241D;
+  --color-ll-mute: #56635A;
+  --color-ll-acc:  #2F6B4F;
+  --color-ll-weak: #E4EFE7;
+  --color-ll-good: #3E9A6E;
+  --color-ll-gtx:  #2E7D58;
+  --color-ll-warn: #C2873B;
+  --color-ll-loss: #B5503D;
+  --color-ll-dim:  #8A938B;
+}
+
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
@@ -7,10 +47,11 @@
 
 body {
   margin: 0;
-  font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'Yu Gothic', system-ui, sans-serif;
-  background: #0f0f0f;
-  color: #fff;
-  color-scheme: dark;
+  font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont,
+    'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -31,18 +72,17 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
-/* Dark inputs / selects / textareas */
 input, select, textarea {
-  background-color: #27272a;
-  color: #fff;
-  border-color: #3f3f46;
+  background-color: var(--surface-2);
+  color: var(--text);
+  border-color: var(--line);
 }
 
 input::placeholder, textarea::placeholder {
-  color: #71717a;
+  color: var(--neutral);
 }
 
 select option {
-  background-color: #18181b;
-  color: #fff;
+  background-color: var(--surface);
+  color: var(--text);
 }

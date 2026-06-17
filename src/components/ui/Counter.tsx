@@ -23,24 +23,24 @@ export function Counter({ label, value, onChange, min = 0, max = 99, compact = f
 
   return (
     <div className={`flex items-center justify-between ${compact ? 'py-1' : 'py-2'}`}>
-      <span className={`text-zinc-300 font-medium ${compact ? 'text-sm' : 'text-base'}`}>{label}</span>
+      <span className={`text-ll-ink font-medium ${compact ? 'text-sm' : 'text-base'}`}>{label}</span>
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={handleMinus}
-          className={`flex items-center justify-center rounded-full bg-zinc-800 active:bg-zinc-700 font-bold text-white ${
+          className={`flex items-center justify-center rounded-full bg-ll-s2 border border-ll-line active:bg-ll-line font-bold text-ll-ink ${
             compact ? 'w-8 h-8 text-lg' : 'w-11 h-11 text-2xl'
           }`}
         >
           −
         </button>
-        <span className={`font-bold text-white w-8 text-center ${compact ? 'text-lg' : 'text-2xl'}`}>
+        <span className={`font-bold text-ll-ink w-8 text-center ${compact ? 'text-lg' : 'text-2xl'}`}>
           {isUnset ? '−' : value}
         </span>
         <button
           type="button"
           onClick={handlePlus}
-          className={`flex items-center justify-center rounded-full bg-lime-400 active:bg-lime-300 text-black font-bold ${
+          className={`flex items-center justify-center rounded-full bg-ll-acc active:opacity-80 text-white font-bold ${
             compact ? 'w-8 h-8 text-lg' : 'w-11 h-11 text-2xl'
           }`}
         >

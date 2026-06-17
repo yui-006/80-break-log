@@ -10,8 +10,8 @@ import { Plus, Search, ChevronRight, Trash2, Edit3, MapPin, Globe } from 'lucide
 function genId() { return crypto.randomUUID(); }
 function now() { return new Date().toISOString(); }
 
-const INPUT_CLS = 'mt-1 w-full border border-zinc-700 bg-zinc-800 text-white rounded-xl px-3 py-2.5 text-base placeholder:text-zinc-500';
-const LABEL_CLS = 'text-sm font-medium text-zinc-300';
+const INPUT_CLS = 'mt-1 w-full border border-ll-line bg-ll-s2 text-ll-ink rounded-xl px-3 py-2.5 text-base placeholder:text-ll-dim';
+const LABEL_CLS = 'text-sm font-medium text-ll-ink';
 
 function blankCourse(id: string): Course {
   const holes: CourseHole[] = Array.from({ length: 18 }, (_, i) => ({
@@ -34,13 +34,13 @@ function HoleTableEditor({ holes, onChange }: { holes: CourseHole[]; onChange: (
     onChange(next);
   }
 
-  const cellInput = 'w-14 border border-zinc-700 bg-zinc-800 text-white rounded px-1 py-0.5 text-center text-xs';
+  const cellInput = 'w-14 border border-ll-line bg-ll-s2 text-ll-ink rounded px-1 py-0.5 text-center text-xs';
 
   return (
     <div className="overflow-x-auto -mx-4">
       <table className="text-xs w-full min-w-max">
         <thead>
-          <tr className="bg-zinc-800 text-zinc-400">
+          <tr className="bg-ll-s2 text-ll-mute">
             <th className="px-2 py-2 text-left">H</th>
             <th className="px-2 py-2">Par</th>
             <th className="px-2 py-2">Back</th>
@@ -52,11 +52,11 @@ function HoleTableEditor({ holes, onChange }: { holes: CourseHole[]; onChange: (
         </thead>
         <tbody>
           {holes.map((h, i) => (
-            <tr key={h.id} className={i % 2 === 0 ? 'bg-zinc-900' : 'bg-zinc-800/50'}>
-              <td className="px-2 py-1 font-medium text-zinc-300">{h.holeNo}</td>
+            <tr key={h.id} className={i % 2 === 0 ? 'bg-ll-surf' : 'bg-ll-s2/60'}>
+              <td className="px-2 py-1 font-medium text-ll-ink">{h.holeNo}</td>
               <td className="px-1 py-1">
                 <select value={h.par} onChange={e => update(i, 'par', Number(e.target.value) as 3|4|5)}
-                  className="w-12 border border-zinc-700 bg-zinc-800 text-white rounded px-1 py-0.5 text-center">
+                  className="w-12 border border-ll-line bg-ll-s2 text-ll-ink rounded px-1 py-0.5 text-center text-xs">
                   {[3,4,5].map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </td>
@@ -70,7 +70,7 @@ function HoleTableEditor({ holes, onChange }: { holes: CourseHole[]; onChange: (
               <td className="px-1 py-1">
                 <input type="number" value={h.handicap ?? ''}
                   onChange={e => update(i, 'handicap', e.target.value ? Number(e.target.value) : undefined)}
-                  className="w-12 border border-zinc-700 bg-zinc-800 text-white rounded px-1 py-0.5 text-center" placeholder="-" />
+                  className="w-12 border border-ll-line bg-ll-s2 text-ll-ink rounded px-1 py-0.5 text-center text-xs" placeholder="-" />
               </td>
             </tr>
           ))}
@@ -111,11 +111,11 @@ function CourseFormModal({ initial, onSave, onClose }: { initial: Course; onSave
           <textarea value={course.memo ?? ''} onChange={field('memo')} rows={2} className={`${INPUT_CLS} resize-none`} />
         </div>
         <div>
-          <h3 className="font-bold text-white mb-2">ホール情報</h3>
+          <h3 className="font-bold text-ll-ink mb-2">ホール情報</h3>
           <HoleTableEditor holes={course.holes} onChange={holes => setCourse(prev => ({ ...prev, holes, updatedAt: now() }))} />
         </div>
         <button onClick={() => { if (course.name.trim()) onSave(course); }} disabled={!course.name.trim()}
-          className="w-full bg-lime-400 text-black py-3.5 rounded-2xl font-bold text-base disabled:opacity-40 active:bg-lime-300">
+          className="w-full bg-ll-acc text-white py-3.5 rounded-2xl font-bold text-base disabled:opacity-40 active:opacity-80">
           保存する
         </button>
       </div>
@@ -156,27 +156,27 @@ function CourseSearchModal({ onSelect, onClose }: { onSelect: (c: Course) => voi
       <div className="space-y-4 pt-4">
         <div className="flex gap-2">
           <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && search()}
-            className="flex-1 border border-zinc-700 bg-zinc-800 text-white rounded-xl px-3 py-2.5 text-base placeholder:text-zinc-500"
+            className="flex-1 border border-ll-line bg-ll-s2 text-ll-ink rounded-xl px-3 py-2.5 text-base placeholder:text-ll-dim"
             placeholder="コース名・都道府県" />
-          <button onClick={search} className="bg-lime-400 text-black px-4 rounded-xl font-medium active:bg-lime-300">
+          <button onClick={search} className="bg-ll-acc text-white px-4 rounded-xl font-medium active:opacity-80">
             {searching ? '…' : <Search size={18} />}
           </button>
         </div>
         {results.length === 0 && !searching && (
-          <p className="text-center text-zinc-500 text-sm py-4">
+          <p className="text-center text-ll-mute text-sm py-4">
             検索してコース候補を探してください<br />
             <span className="text-xs">(MVPはサンプルデータで動作)</span>
           </p>
         )}
         <div className="space-y-2">
           {results.map(r => (
-            <div key={r.id} className="flex items-center justify-between p-3 bg-zinc-800 rounded-xl active:bg-zinc-700 cursor-pointer"
+            <div key={r.id} className="flex items-center justify-between p-3 bg-ll-s2 rounded-xl border border-ll-line active:bg-ll-line cursor-pointer"
               onClick={() => loadPreview(r.id)}>
               <div>
-                <p className="font-medium text-white text-sm">{r.name}</p>
-                <p className="text-xs text-zinc-500">{r.prefecture} {r.location}</p>
+                <p className="font-medium text-ll-ink text-sm">{r.name}</p>
+                <p className="text-xs text-ll-mute">{r.prefecture} {r.location}</p>
               </div>
-              <ChevronRight size={16} className="text-zinc-600" />
+              <ChevronRight size={16} className="text-ll-dim" />
             </div>
           ))}
         </div>
@@ -191,21 +191,21 @@ function CourseDetailModal({ course, onEdit, onDelete, onClose }: { course: Cour
     <Modal title={course.name} onClose={onClose}>
       <div className="pt-4 space-y-4">
         {course.location && (
-          <div className="flex items-center gap-2 text-sm text-zinc-400">
+          <div className="flex items-center gap-2 text-sm text-ll-mute">
             <MapPin size={14} /><span>{course.prefecture} {course.location}</span>
           </div>
         )}
         {course.sourceUrl && (
-          <div className="flex items-center gap-2 text-sm text-blue-400">
+          <div className="flex items-center gap-2 text-sm text-ll-acc">
             <Globe size={14} />
             <a href={course.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline truncate">{course.sourceUrl}</a>
           </div>
         )}
-        <div className="text-sm text-zinc-500">全{course.holes.length}ホール / Par {totalPar}</div>
+        <div className="text-sm text-ll-mute">全{course.holes.length}ホール / Par {totalPar}</div>
         <div className="overflow-x-auto -mx-4">
           <table className="text-xs w-full min-w-max">
             <thead>
-              <tr className="bg-zinc-800 text-zinc-400">
+              <tr className="bg-ll-s2 text-ll-mute">
                 <th className="px-3 py-2 text-left">H</th>
                 <th className="px-2 py-2">Par</th>
                 <th className="px-2 py-2">Back</th>
@@ -218,15 +218,15 @@ function CourseDetailModal({ course, onEdit, onDelete, onClose }: { course: Cour
             </thead>
             <tbody>
               {course.holes.map((h, i) => (
-                <tr key={h.id} className={i % 2 === 0 ? 'bg-zinc-900' : 'bg-zinc-800/50'}>
-                  <td className="px-3 py-1.5 font-medium text-zinc-300">{h.holeNo}</td>
-                  <td className="px-2 py-1.5 text-center text-white">{h.par}</td>
-                  <td className="px-2 py-1.5 text-center text-zinc-400">{h.yardsByTee?.back ?? '-'}</td>
-                  <td className="px-2 py-1.5 text-center text-zinc-400">{h.yardsByTee?.regular ?? '-'}</td>
-                  <td className="px-2 py-1.5 text-center text-zinc-400">{h.yardsByTee?.front ?? '-'}</td>
-                  <td className="px-2 py-1.5 text-center text-zinc-400">{h.yardsByTee?.ladies ?? '-'}</td>
-                  <td className="px-2 py-1.5 text-center text-zinc-400">{h.handicap ?? '-'}</td>
-                  <td className="px-2 py-1.5 text-zinc-500">{h.memo ?? ''}</td>
+                <tr key={h.id} className={i % 2 === 0 ? 'bg-ll-surf' : 'bg-ll-s2/60'}>
+                  <td className="px-3 py-1.5 font-medium text-ll-ink">{h.holeNo}</td>
+                  <td className="px-2 py-1.5 text-center text-ll-ink">{h.par}</td>
+                  <td className="px-2 py-1.5 text-center text-ll-mute">{h.yardsByTee?.back ?? '-'}</td>
+                  <td className="px-2 py-1.5 text-center text-ll-mute">{h.yardsByTee?.regular ?? '-'}</td>
+                  <td className="px-2 py-1.5 text-center text-ll-mute">{h.yardsByTee?.front ?? '-'}</td>
+                  <td className="px-2 py-1.5 text-center text-ll-mute">{h.yardsByTee?.ladies ?? '-'}</td>
+                  <td className="px-2 py-1.5 text-center text-ll-mute">{h.handicap ?? '-'}</td>
+                  <td className="px-2 py-1.5 text-ll-mute">{h.memo ?? ''}</td>
                 </tr>
               ))}
             </tbody>
@@ -234,11 +234,11 @@ function CourseDetailModal({ course, onEdit, onDelete, onClose }: { course: Cour
         </div>
         <div className="flex gap-3 pt-2">
           <button onClick={onEdit}
-            className="flex-1 flex items-center justify-center gap-2 bg-lime-400 text-black py-3 rounded-2xl font-bold active:bg-lime-300">
+            className="flex-1 flex items-center justify-center gap-2 bg-ll-acc text-white py-3 rounded-2xl font-bold active:opacity-80">
             <Edit3 size={16} /> 編集
           </button>
           <button onClick={onDelete}
-            className="flex items-center justify-center gap-2 bg-red-900/40 text-red-400 px-4 py-3 rounded-2xl font-bold active:bg-red-900/60">
+            className="flex items-center justify-center gap-2 bg-ll-loss/10 text-ll-loss px-4 py-3 rounded-2xl font-bold active:opacity-80">
             <Trash2 size={16} />
           </button>
         </div>
@@ -264,16 +264,16 @@ export function CoursePage() {
   }
 
   return (
-    <div className="min-h-full bg-[#0f0f0f]">
+    <div className="min-h-full bg-ll-bg">
       <div className="px-5 pt-12 pb-5 flex items-end justify-between">
-        <h1 className="text-2xl font-bold text-white">コース管理</h1>
+        <h1 className="text-2xl font-bold text-ll-ink">コース管理</h1>
         <div className="flex gap-2">
           <button onClick={() => setMode('search')}
-            className="flex items-center gap-1 bg-zinc-800 text-zinc-300 px-3 py-2 rounded-xl text-sm font-medium active:bg-zinc-700">
+            className="flex items-center gap-1 bg-ll-s2 text-ll-ink px-3 py-2 rounded-xl text-sm font-medium border border-ll-line active:bg-ll-line">
             <Search size={14} /> ネット検索
           </button>
           <button onClick={() => setMode('new')}
-            className="flex items-center gap-1 bg-lime-400 text-black px-3 py-2 rounded-xl text-sm font-bold active:bg-lime-300">
+            className="flex items-center gap-1 bg-ll-acc text-white px-3 py-2 rounded-xl text-sm font-bold active:opacity-80">
             <Plus size={14} /> 手入力
           </button>
         </div>
@@ -281,8 +281,8 @@ export function CoursePage() {
 
       <div className="px-4 pb-4 space-y-3">
         {courses.length === 0 && (
-          <div className="text-center py-16 text-zinc-600">
-            <MapPin size={40} className="mx-auto mb-2 text-zinc-700" />
+          <div className="text-center py-16 text-ll-dim">
+            <MapPin size={40} className="mx-auto mb-2 text-ll-dim" />
             <p>コースが登録されていません</p>
             <p className="text-sm mt-1">「ネット検索」か「手入力」で追加してください</p>
           </div>
@@ -293,17 +293,17 @@ export function CoursePage() {
             <Card key={c.id} className="p-4" onClick={() => { setSelectedId(c.id); setMode('detail'); }}>
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-white truncate">{c.name}</p>
+                  <p className="font-bold text-ll-ink truncate">{c.name}</p>
                   {c.location && (
-                    <p className="text-xs text-zinc-500 flex items-center gap-1 mt-0.5">
+                    <p className="text-xs text-ll-mute flex items-center gap-1 mt-0.5">
                       <MapPin size={10} /> {c.prefecture} {c.location}
                     </p>
                   )}
-                  <p className="text-xs text-zinc-600 mt-0.5">
+                  <p className="text-xs text-ll-dim mt-0.5">
                     {c.holes.length}H / Par {totalPar}{c.source === 'mock' && ' · サンプル'}
                   </p>
                 </div>
-                <ChevronRight size={18} className="text-zinc-700 flex-shrink-0" />
+                <ChevronRight size={18} className="text-ll-dim flex-shrink-0" />
               </div>
             </Card>
           );
@@ -313,7 +313,7 @@ export function CoursePage() {
       {courses.length > 0 && (
         <div className="px-4 pb-4">
           <button onClick={() => navigate('/record')}
-            className="w-full bg-lime-400 text-black py-4 rounded-2xl font-bold text-base active:bg-lime-300">
+            className="w-full bg-ll-acc text-white py-4 rounded-2xl font-bold text-base active:opacity-80">
             ラウンドを開始 →
           </button>
         </div>

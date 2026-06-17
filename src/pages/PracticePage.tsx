@@ -41,7 +41,7 @@ function calcWeeklyStreak(logs: PracticeLogEntry[]): number {
 
 function Checkmark() {
   return (
-    <svg className="w-4 h-4 text-black" viewBox="0 0 16 16" fill="none">
+    <svg className="w-4 h-4 text-white" viewBox="0 0 16 16" fill="none">
       <path d="M3 8l3.5 3.5L13 5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -141,16 +141,16 @@ export function PracticePage() {
   }
 
   return (
-    <div className="min-h-full bg-[#0f0f0f]">
+    <div className="min-h-full bg-ll-bg">
       {/* Header */}
       <div className="px-5 pt-12 pb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">練習</h1>
-          <p className="text-zinc-500 text-xs mt-0.5">{today}</p>
+          <h1 className="text-2xl font-bold text-ll-ink">練習</h1>
+          <p className="text-ll-mute text-xs mt-0.5">{today}</p>
         </div>
-        <div className="flex items-center gap-1.5 bg-zinc-900 rounded-xl px-3 py-2">
-          <Flame size={15} className={streak > 0 ? 'text-orange-400' : 'text-zinc-600'} />
-          <span className={`text-sm font-bold ${streak > 0 ? 'text-white' : 'text-zinc-600'}`}>
+        <div className="flex items-center gap-1.5 bg-ll-surf border border-ll-line rounded-xl px-3 py-2">
+          <Flame size={15} className={streak > 0 ? 'text-ll-warn' : 'text-ll-dim'} />
+          <span className={`text-sm font-bold ${streak > 0 ? 'text-ll-ink' : 'text-ll-dim'}`}>
             {streak > 0 ? `${streak}週` : '−'}
           </span>
         </div>
@@ -158,17 +158,16 @@ export function PracticePage() {
 
       <div className="px-4 pb-6 space-y-4">
 
-        {/* ── 今日の練習チェックリスト ── */}
-        <div className="bg-zinc-900 rounded-2xl overflow-hidden">
-          {/* カードヘッダー */}
-          <div className="px-4 pt-4 pb-3 flex items-center justify-between border-b border-zinc-800">
-            <h2 className="font-bold text-white text-sm">今日の練習</h2>
+        {/* 今日の練習チェックリスト */}
+        <div className="bg-ll-surf border border-ll-line rounded-[22px] overflow-hidden shadow-card">
+          <div className="px-4 pt-4 pb-3 flex items-center justify-between border-b border-ll-line">
+            <h2 className="font-bold text-ll-ink text-sm">今日の練習</h2>
             <div className="flex items-center gap-2">
               {todayCheckedCount > 0 && (
-                <span className="text-xs text-zinc-500">{todayCheckedCount}件完了</span>
+                <span className="text-xs text-ll-mute">{todayCheckedCount}件完了</span>
               )}
               {todayTotalBalls > 0 && (
-                <span className="text-xs text-lime-400 font-bold">{todayTotalBalls}球</span>
+                <span className="text-xs text-ll-good font-bold">{todayTotalBalls}球</span>
               )}
             </div>
           </div>
@@ -180,18 +179,18 @@ export function PracticePage() {
             return (
               <div
                 key={`ai-${i}`}
-                className={`flex items-center px-4 border-b border-zinc-800/50 min-h-[56px] ${checked ? 'bg-lime-400/5' : ''}`}
+                className={`flex items-center px-4 border-b border-ll-line/50 min-h-[56px] ${checked ? 'bg-ll-weak' : ''}`}
               >
                 <button
                   onClick={() => toggleMenu(item.category)}
-                  className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center mr-3 active:scale-95 transition-transform ${checked ? 'bg-lime-400 border-lime-400' : 'border-zinc-600'}`}
+                  className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center mr-3 active:scale-95 transition-transform ${checked ? 'bg-ll-acc border-ll-acc' : 'border-ll-line'}`}
                 >
                   {checked && <Checkmark />}
                 </button>
-                <span className={`flex-1 text-sm font-medium min-w-0 truncate ${checked ? 'text-white' : 'text-zinc-300'}`}>
+                <span className={`flex-1 text-sm font-medium min-w-0 truncate ${checked ? 'text-ll-acc' : 'text-ll-ink'}`}>
                   {item.category}
                 </span>
-                <span className="text-[10px] bg-lime-400/15 text-lime-400 px-1.5 py-0.5 rounded font-bold mr-2 flex-shrink-0">
+                <span className="text-[10px] bg-ll-weak text-ll-acc px-1.5 py-0.5 rounded font-bold mr-2 flex-shrink-0 border border-ll-acc/30">
                   提案
                 </span>
                 {checked && (
@@ -204,9 +203,9 @@ export function PracticePage() {
                       onChange={e => setBallInputs(prev => ({ ...prev, [item.category]: e.target.value }))}
                       onBlur={() => commitBallCount(item.category)}
                       placeholder="球数"
-                      className="w-16 bg-zinc-800 text-white text-sm rounded-lg px-2 py-1.5 border border-zinc-700 text-right placeholder:text-zinc-600"
+                      className="w-16 bg-ll-s2 text-ll-ink text-sm rounded-lg px-2 py-1.5 border border-ll-line text-right placeholder:text-ll-dim"
                     />
-                    <span className="text-xs text-zinc-500">球</span>
+                    <span className="text-xs text-ll-mute">球</span>
                   </div>
                 )}
               </div>
@@ -220,15 +219,15 @@ export function PracticePage() {
             return (
               <div
                 key={m.id}
-                className={`flex items-center px-4 border-b border-zinc-800/50 min-h-[56px] ${checked ? 'bg-lime-400/5' : ''}`}
+                className={`flex items-center px-4 border-b border-ll-line/50 min-h-[56px] ${checked ? 'bg-ll-weak' : ''}`}
               >
                 <button
                   onClick={() => toggleMenu(m.name)}
-                  className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center mr-3 active:scale-95 transition-transform ${checked ? 'bg-lime-400 border-lime-400' : 'border-zinc-600'}`}
+                  className={`flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center mr-3 active:scale-95 transition-transform ${checked ? 'bg-ll-acc border-ll-acc' : 'border-ll-line'}`}
                 >
                   {checked && <Checkmark />}
                 </button>
-                <span className={`flex-1 text-sm font-medium min-w-0 truncate ${checked ? 'text-white' : 'text-zinc-300'}`}>
+                <span className={`flex-1 text-sm font-medium min-w-0 truncate ${checked ? 'text-ll-acc' : 'text-ll-ink'}`}>
                   {m.name}
                 </span>
                 {checked ? (
@@ -241,14 +240,14 @@ export function PracticePage() {
                       onChange={e => setBallInputs(prev => ({ ...prev, [m.name]: e.target.value }))}
                       onBlur={() => commitBallCount(m.name)}
                       placeholder="球数"
-                      className="w-16 bg-zinc-800 text-white text-sm rounded-lg px-2 py-1.5 border border-zinc-700 text-right placeholder:text-zinc-600"
+                      className="w-16 bg-ll-s2 text-ll-ink text-sm rounded-lg px-2 py-1.5 border border-ll-line text-right placeholder:text-ll-dim"
                     />
-                    <span className="text-xs text-zinc-500">球</span>
+                    <span className="text-xs text-ll-mute">球</span>
                   </div>
                 ) : (
                   <button
                     onClick={() => deletePracticeMenuItem(m.id)}
-                    className="text-zinc-700 active:text-red-400 p-2 flex-shrink-0"
+                    className="text-ll-dim active:text-ll-loss p-2 flex-shrink-0"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -257,45 +256,41 @@ export function PracticePage() {
             );
           })}
 
-          {/* 空状態 */}
           {suggestedMenu.length === 0 && state.practiceMenuItems.length === 0 && (
-            <div className="px-4 py-6 text-center text-zinc-600 text-sm">
+            <div className="px-4 py-6 text-center text-ll-dim text-sm">
               下の入力欄からメニューを追加しよう
             </div>
           )}
 
           {/* メニュー追加 */}
           <div className="flex items-center gap-2 px-4 py-3.5">
-            <Plus size={16} className="text-zinc-500 flex-shrink-0" />
+            <Plus size={16} className="text-ll-mute flex-shrink-0" />
             <input
               value={newMenuName}
               onChange={e => setNewMenuName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAddCustomMenu()}
               placeholder="メニューを追加..."
-              className="flex-1 bg-transparent text-white text-sm placeholder:text-zinc-600 outline-none"
+              className="flex-1 bg-transparent text-ll-ink text-sm placeholder:text-ll-dim outline-none"
             />
             {newMenuName.trim() && (
-              <button
-                onClick={handleAddCustomMenu}
-                className="text-lime-400 text-sm font-bold flex-shrink-0"
-              >
+              <button onClick={handleAddCustomMenu} className="text-ll-acc text-sm font-bold flex-shrink-0">
                 追加
               </button>
             )}
           </div>
         </div>
 
-        {/* ── ヒートマップ ── */}
-        <div className="bg-zinc-900 rounded-2xl p-4">
+        {/* ヒートマップ */}
+        <div className="bg-ll-surf border border-ll-line rounded-[22px] p-4 shadow-card">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Flame size={15} className={streak > 0 ? 'text-orange-400' : 'text-zinc-600'} />
-              <span className={`text-sm font-bold ${streak > 0 ? 'text-white' : 'text-zinc-500'}`}>
+              <Flame size={15} className={streak > 0 ? 'text-ll-warn' : 'text-ll-dim'} />
+              <span className={`text-sm font-bold ${streak > 0 ? 'text-ll-ink' : 'text-ll-mute'}`}>
                 {streak > 0 ? `${streak}週連続で練習中` : '今週から記録を始めよう'}
               </span>
             </div>
             {weekBallTotal > 0 && (
-              <span className="text-xs text-zinc-500">今週 {weekBallTotal}球</span>
+              <span className="text-xs text-ll-mute">今週 {weekBallTotal}球</span>
             )}
           </div>
           <div className="flex gap-1 overflow-x-auto pb-1">
@@ -309,7 +304,7 @@ export function PracticePage() {
                     <div
                       key={ds}
                       title={ds}
-                      className={`w-3 h-3 rounded-sm ${isFuture ? 'bg-transparent' : has ? 'bg-lime-400' : 'bg-zinc-800'}`}
+                      className={`w-3 h-3 rounded-sm ${isFuture ? 'bg-transparent' : has ? 'bg-ll-acc' : 'bg-ll-s2 border border-ll-line'}`}
                     />
                   );
                 })}
@@ -318,18 +313,18 @@ export function PracticePage() {
           </div>
         </div>
 
-        {/* ── 練習履歴 ── */}
+        {/* 練習履歴 */}
         {allLogDays.length > 0 && (
-          <div className="bg-zinc-900 rounded-2xl p-4">
-            <h2 className="font-bold text-white text-sm mb-3">練習履歴</h2>
+          <div className="bg-ll-surf border border-ll-line rounded-[22px] p-4 shadow-card">
+            <h2 className="font-bold text-ll-ink text-sm mb-3">練習履歴</h2>
             <div>
               {allLogDays.map((date, di) => {
                 const dayLogs = state.practiceLogs
                   .filter(l => l.date === date)
                   .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
                 return (
-                  <div key={date} className={`py-2.5 ${di < allLogDays.length - 1 ? 'border-b border-zinc-800' : ''}`}>
-                    <p className="text-xs text-zinc-500 mb-1.5">{date}</p>
+                  <div key={date} className={`py-2.5 ${di < allLogDays.length - 1 ? 'border-b border-ll-line' : ''}`}>
+                    <p className="text-xs text-ll-mute mb-1.5">{date}</p>
                     <div className="space-y-1.5">
                       {dayLogs.map(log => (
                         <button
@@ -337,12 +332,12 @@ export function PracticePage() {
                           onClick={() => openEditModal(log)}
                           className="w-full flex items-center justify-between gap-3 active:opacity-60"
                         >
-                          <span className="text-sm text-zinc-300 text-left flex-1 truncate">{log.menuName}</span>
+                          <span className="text-sm text-ll-ink text-left flex-1 truncate">{log.menuName}</span>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             {log.ballCount != null && (
-                              <span className="text-xs text-lime-400">{log.ballCount}球</span>
+                              <span className="text-xs text-ll-good">{log.ballCount}球</span>
                             )}
-                            <Pencil size={13} className="text-zinc-600" />
+                            <Pencil size={13} className="text-ll-dim" />
                           </div>
                         </button>
                       ))}
@@ -360,25 +355,25 @@ export function PracticePage() {
         <Modal title="練習記録を編集" onClose={() => setEditingLog(null)}>
           <div className="py-4 space-y-4">
             <div>
-              <label className="block text-xs text-zinc-400 mb-1.5">日付</label>
+              <label className="block text-xs text-ll-mute mb-1.5">日付</label>
               <input
                 type="date"
                 value={editForm.date}
                 onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))}
-                className="w-full bg-zinc-800 text-white rounded-xl px-3 py-2.5 border border-zinc-700"
+                className="w-full bg-ll-s2 text-ll-ink rounded-xl px-3 py-2.5 border border-ll-line"
               />
             </div>
             <div>
-              <label className="block text-xs text-zinc-400 mb-1.5">メニュー名</label>
+              <label className="block text-xs text-ll-mute mb-1.5">メニュー名</label>
               <input
                 type="text"
                 value={editForm.menuName}
                 onChange={e => setEditForm(f => ({ ...f, menuName: e.target.value }))}
-                className="w-full bg-zinc-800 text-white rounded-xl px-3 py-2.5 border border-zinc-700 placeholder:text-zinc-500"
+                className="w-full bg-ll-s2 text-ll-ink rounded-xl px-3 py-2.5 border border-ll-line placeholder:text-ll-dim"
               />
             </div>
             <div>
-              <label className="block text-xs text-zinc-400 mb-1.5">球数</label>
+              <label className="block text-xs text-ll-mute mb-1.5">球数</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -386,19 +381,19 @@ export function PracticePage() {
                 value={editForm.ballCount}
                 onChange={e => setEditForm(f => ({ ...f, ballCount: e.target.value }))}
                 placeholder="未入力"
-                className="w-full bg-zinc-800 text-white rounded-xl px-3 py-2.5 border border-zinc-700 placeholder:text-zinc-500"
+                className="w-full bg-ll-s2 text-ll-ink rounded-xl px-3 py-2.5 border border-ll-line placeholder:text-ll-dim"
               />
             </div>
             <button
               onClick={handleSaveEdit}
               disabled={!editForm.date || !editForm.menuName.trim()}
-              className="w-full bg-lime-400 text-black py-3 rounded-xl font-bold disabled:opacity-40"
+              className="w-full bg-ll-acc text-white py-3 rounded-xl font-bold disabled:opacity-40 active:opacity-80"
             >
               保存
             </button>
             <button
               onClick={handleDeleteEdit}
-              className="w-full text-red-400 py-2.5 rounded-xl text-sm font-medium active:opacity-70"
+              className="w-full text-ll-loss py-2.5 rounded-xl text-sm font-medium active:opacity-70"
             >
               この記録を削除
             </button>

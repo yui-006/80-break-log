@@ -10,7 +10,7 @@ export function LossDetailPage() {
 
   const round = state.rounds.find(r => r.id === roundId);
   if (!round) {
-    return <div className="flex items-center justify-center h-full text-zinc-500">ラウンドが見つかりません</div>;
+    return <div className="flex items-center justify-center h-full text-ll-mute">ラウンドが見つかりません</div>;
   }
 
   const holeEntries = round.holes
@@ -24,35 +24,35 @@ export function LossDetailPage() {
   const total = Math.round(holeEntries.reduce((s, e) => s + e.entry.estimatedLoss, 0) * 10) / 10;
 
   return (
-    <div className="min-h-full bg-[#0f0f0f]">
-      <div className="bg-zinc-950 text-white px-4 pt-12 pb-5 border-b border-zinc-800">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-zinc-500 text-sm mb-2">
+    <div className="min-h-full bg-ll-bg">
+      <div className="bg-ll-surf text-ll-ink px-4 pt-12 pb-5 border-b border-ll-line">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-ll-mute text-sm mb-2">
           <ChevronLeft size={16} /> 戻る
         </button>
-        <h1 className="text-xl font-bold text-white">{label}</h1>
-        <p className="text-zinc-500 text-sm">{round.courseName} / {round.date}</p>
-        <p className="text-red-400 font-bold text-2xl mt-3">{total}打改善の余地</p>
+        <h1 className="text-xl font-bold text-ll-ink">{label}</h1>
+        <p className="text-ll-mute text-sm">{round.courseName} / {round.date}</p>
+        <p className="text-ll-loss font-bold text-2xl mt-3">{total}打改善の余地</p>
       </div>
 
       <div className="px-4 py-4">
-        <div className="bg-zinc-900 rounded-2xl overflow-hidden">
+        <div className="bg-ll-surf border border-ll-line rounded-[22px] overflow-hidden shadow-card">
           {holeEntries.length === 0 ? (
-            <p className="text-zinc-500 text-sm text-center py-8">該当するホールはありません</p>
+            <p className="text-ll-mute text-sm text-center py-8">該当するホールはありません</p>
           ) : (
             holeEntries.map(({ hole, entry }) => (
               <div
                 key={hole.id}
-                className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 last:border-b-0 cursor-pointer active:bg-zinc-800"
+                className="flex items-center justify-between px-4 py-3 border-b border-ll-line last:border-b-0 cursor-pointer active:bg-ll-s2"
                 onClick={() => navigate(`/rounds/${roundId}/hole/${hole.holeNo}`)}
               >
                 <div className="flex items-center gap-3">
-                  <span className="bg-zinc-800 text-zinc-300 text-xs font-bold px-2 py-1 rounded-lg">H{hole.holeNo}</span>
-                  <span className="text-sm text-zinc-400">Par {hole.par}</span>
-                  <span className="text-sm font-bold text-white">{hole.score ?? '-'}</span>
+                  <span className="bg-ll-s2 text-ll-ink text-xs font-bold px-2 py-1 rounded-lg border border-ll-line">H{hole.holeNo}</span>
+                  <span className="text-sm text-ll-mute">Par {hole.par}</span>
+                  <span className="text-sm font-bold text-ll-ink">{hole.score ?? '-'}</span>
                 </div>
                 <div className="text-right">
-                  <p className="text-red-400 font-bold text-sm">{entry.estimatedLoss}打</p>
-                  <p className="text-zinc-500 text-xs">{entry.count}回</p>
+                  <p className="text-ll-loss font-bold text-sm">{entry.estimatedLoss}打</p>
+                  <p className="text-ll-mute text-xs">{entry.count}回</p>
                 </div>
               </div>
             ))
