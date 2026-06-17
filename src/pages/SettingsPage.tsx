@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import type { Club, ClubSet } from '../types';
 import { Card } from '../components/ui/Card';
-import { Download, Upload, Trash2, AlertTriangle } from 'lucide-react';
+import { Download, Upload, Trash2, AlertTriangle, Cloud, CloudOff, LogOut, RefreshCw } from 'lucide-react';
 import { CLUB_ORDER } from '../data/initial';
 import { CLUB_EXPECTED_DISTANCE } from '../analytics';
 
@@ -12,7 +13,8 @@ const INPUT_CLS = 'mt-1 w-full border border-ll-line bg-ll-s2 text-ll-ink rounde
 const LABEL_CLS = 'text-xs text-ll-mute';
 
 export function SettingsPage() {
-  const { state, goalThreshold, setGoalThreshold, exportData, importData, clearAll, saveClub, deleteClub, saveClubSet, deleteClubSet, setActiveClubSet } = useApp();
+  const { state, goalThreshold, setGoalThreshold, user, syncStatus, signOut, exportData, importData, clearAll, saveClub, deleteClub, saveClubSet, deleteClubSet, setActiveClubSet } = useApp();
+  const navigate = useNavigate();
   const GOAL_OPTIONS = [100, 95, 90, 85, 80] as const;
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState('');
@@ -108,6 +110,53 @@ export function SettingsPage() {
         {msg && (
           <div className="bg-ll-weak border border-ll-acc/30 text-ll-acc text-sm px-4 py-3 rounded-2xl">{msg}</div>
         )}
+
+        {/* Cloud sync */}
+        <Card className="p-4">
+          <h2 className="font-bold text-ll-ink mb-3">クラウド同期</h2>
+          {user ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-ll-weak border border-ll-acc/30 rounded-xl">
+                {syncStatus === 'syncing'
+                  ? <RefreshCw size={18} className="text-ll-acc animate-spin flex-shrink-0" />
+                  : syncStatus === 'error'
+                  ? <CloudOff size={18} className="text-ll-loss flex-shrink-0" />
+                  : <Cloud size={18} className="text-ll-acc flex-shrink-0" />
+                }
+                <div className="min-w-0">
+                  <p className="text-ll-ink text-sm font-bold truncate">{user.email}</p>
+                  <p className="text-ll-mute text-xs">
+                    {syncStatus === 'syncing' ? '同期中…'
+                      : syncStatus === 'error' ? '同期エラー（次回接続時に再試行）'
+                      : 'データを自動バックアップ中'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={signOut}
+                className="w-full flex items-center justify-center gap-2 bg-ll-s2 text-ll-mute py-3 rounded-xl text-sm font-medium border border-ll-line active:bg-ll-line"
+              >
+                <LogOut size={15} /> ログアウト
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-ll-s2 border border-ll-line rounded-xl">
+                <CloudOff size={18} className="text-ll-dim flex-shrink-0" />
+                <div>
+                  <p className="text-ll-ink text-sm font-bold">未ログイン（ローカルのみ）</p>
+                  <p className="text-ll-mute text-xs">ログインするとデータが複数端末で同期されます</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/auth')}
+                className="w-full flex items-center justify-center gap-2 bg-ll-acc text-white py-3.5 rounded-xl text-sm font-bold active:opacity-80"
+              >
+                <Cloud size={16} /> ログインして同期を有効にする
+              </button>
+            </div>
+          )}
+        </Card>
 
         {/* Goal threshold */}
         <Card className="p-4">

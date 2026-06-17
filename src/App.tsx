@@ -10,12 +10,16 @@ import { LossDetailPage } from './pages/LossDetailPage';
 import { AnalysisPage } from './pages/AnalysisPage';
 import { PracticePage } from './pages/PracticePage';
 import { SettingsPage } from './pages/SettingsPage';
+import { AuthPage } from './pages/AuthPage';
 
 export default function App() {
   return (
     <AppProvider>
       <HashRouter>
         <Routes>
+          {/* Auth page: standalone, no bottom nav */}
+          <Route path="/auth" element={<AuthPage />} />
+          {/* Main app */}
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
             <Route path="courses" element={<CoursePage />} />
