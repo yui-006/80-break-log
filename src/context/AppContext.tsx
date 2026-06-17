@@ -306,9 +306,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ── Auth actions ──────────────────────────────────────────────────────────
 
   const signIn = useCallback(async (email: string) => {
+    const redirectTo = window.location.origin + (import.meta.env.BASE_URL ?? '/');
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: redirectTo },
     });
     if (error) throw error;
   }, []);
