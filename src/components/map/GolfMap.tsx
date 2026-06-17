@@ -49,6 +49,10 @@ type Props = {
   basemap?: Basemap;
   className?: string;
   panTo?: [number, number] | null;
+  /** Increment to force re-pan even if panTo coordinates haven't changed (e.g. explicit recenter tap) */
+  panToKey?: number;
+  /** Fires when the user manually drags the map */
+  onUserMove?: () => void;
 };
 
 const COLOR_HEX: Record<MapMarker['color'], string> = {
@@ -70,13 +74,14 @@ function makeIcon(color: MapMarker['color'], size = 16): L.DivIcon {
 
 export function GolfMap({
   center, zoom = 17, markers = [], polylines = [],
-  onMapClick, basemap = { provider: 'esri' }, className, panTo,
+  onMapClick, basemap = { provider: 'esri' }, className, panTo, panToKey, onUserMove,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markerRefs = useRef<L.Marker[]>([]);
   const polylineRefs = useRef<L.Polyline[]>([]);
   const prevPanTo = useRef<[number, number] | null>(null);
+  const prevPanToKey = useRef<number>(-1);
 
   // Initialize map once on mount
   useEffect(() => {
@@ -103,13 +108,25 @@ export function GolfMap({
     return () => { map.off('click', handler); };
   }, [onMapClick]);
 
-  // Programmatic pan (e.g. when user selects a different hole)
+  // Programmatic pan — fires when coordinates change OR panToKey increments
   useEffect(() => {
     if (!panTo || !mapRef.current) return;
-    if (prevPanTo.current?.[0] === panTo[0] && prevPanTo.current?.[1] === panTo[1]) return;
+    const key = panToKey ?? 0;
+    const sameCoords = prevPanTo.current?.[0] === panTo[0] && prevPanTo.current?.[1] === panTo[1];
+    if (sameCoords && key === prevPanToKey.current) return;
     mapRef.current.flyTo(panTo, zoom ?? 17, { duration: 0.5 });
     prevPanTo.current = panTo;
-  }, [panTo, zoom]);
+    prevPanToKey.current = key;
+  }, [panTo, panToKey, zoom]);
+
+  // Notify caller when user manually drags the map
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !onUserMove) return;
+    const handler = () => onUserMove();
+    map.on('dragstart', handler);
+    return () => { map.off('dragstart', handler); };
+  }, [onUserMove]);
 
   // Update markers
   useEffect(() => {

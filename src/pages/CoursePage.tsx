@@ -204,16 +204,30 @@ function GreenRegistrationModal({
   initialHole?: number;
 }) {
   const [selectedHole, setSelectedHole] = useState(initialHole ?? 1);
+  const [editingType, setEditingType] = useState<'center' | 'tee'>('center');
   const [pendingLatLng, setPendingLatLng] = useState<{ lat: number; lng: number } | null>(null);
+  const [panToKey, setPanToKey] = useState(0);
 
   const existingPoint = greenPoints.find(
-    g => g.courseId === course.id && g.holeNumber === selectedHole && g.pointType === 'center'
+    g => g.courseId === course.id && g.holeNumber === selectedHole && g.pointType === editingType
+  );
+  const otherPoint = greenPoints.find(
+    g => g.courseId === course.id && g.holeNumber === selectedHole && g.pointType !== editingType
   );
 
-  // When switching holes, clear pending tap and show existing point
   function selectHole(n: number) {
     setSelectedHole(n);
     setPendingLatLng(null);
+    // Fly to existing point when switching holes
+    if (greenPoints.some(g => g.courseId === course.id && g.holeNumber === n)) {
+      setPanToKey(k => k + 1);
+    }
+  }
+
+  function switchType(t: 'center' | 'tee') {
+    setEditingType(t);
+    setPendingLatLng(null);
+    setPanToKey(k => k + 1);
   }
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
@@ -228,43 +242,78 @@ function GreenRegistrationModal({
       holeNumber: selectedHole,
       lat: pendingLatLng.lat,
       lng: pendingLatLng.lng,
-      pointType: 'center',
+      pointType: editingType,
       updatedAt: new Date().toISOString(),
     });
     setPendingLatLng(null);
   }
 
-  // Compute map center: existing point → pending → Japan fallback
+  // Display: show existing (or pending tap) as the main editable marker
   const displayPoint = pendingLatLng ?? existingPoint ?? null;
-  const allPoints = greenPoints.filter(g => g.courseId === course.id);
+  const allCoursePoints = greenPoints.filter(g => g.courseId === course.id);
   const mapCenter: [number, number] = displayPoint
     ? [displayPoint.lat, displayPoint.lng]
-    : allPoints.length > 0
-    ? [allPoints[0].lat, allPoints[0].lng]
+    : otherPoint
+    ? [otherPoint.lat, otherPoint.lng]
+    : allCoursePoints.length > 0
+    ? [allCoursePoints[0].lat, allCoursePoints[0].lng]
     : [35.0, 136.5];
 
-  const panTo: [number, number] | null = existingPoint && !pendingLatLng
-    ? [existingPoint.lat, existingPoint.lng]
+  const panToPos: [number, number] | null = (existingPoint || otherPoint)
+    ? ([existingPoint?.lat ?? otherPoint!.lat, existingPoint?.lng ?? otherPoint!.lng] as [number, number])
     : null;
 
-  const markers: MapMarker[] = displayPoint
-    ? [{ lat: displayPoint.lat, lng: displayPoint.lng, color: 'green', label: `H${selectedHole}`, draggable: true,
-        onDragEnd: (lat, lng) => setPendingLatLng({ lat, lng }) }]
+  const markers: MapMarker[] = [
+    ...(displayPoint ? [{
+      lat: displayPoint.lat, lng: displayPoint.lng,
+      color: editingType === 'center' ? 'green' as const : 'orange' as const,
+      label: editingType === 'center' ? `H${selectedHole}G` : `H${selectedHole}T`,
+      draggable: true,
+      onDragEnd: (lat: number, lng: number) => setPendingLatLng({ lat, lng }),
+    }] : []),
+    ...(otherPoint ? [{
+      lat: otherPoint.lat, lng: otherPoint.lng,
+      color: editingType === 'center' ? 'orange' as const : 'green' as const,
+      label: editingType === 'center' ? `T` : `G`,
+    }] : []),
+  ];
+
+  // Show tee→green line if both registered
+  const teeP = editingType === 'tee' ? (displayPoint ?? null) : otherPoint;
+  const grnP = editingType === 'center' ? (displayPoint ?? null) : otherPoint;
+  const polylines = teeP && grnP
+    ? [{ points: [[teeP.lat, teeP.lng], [grnP.lat, grnP.lng]] as [number, number][], color: '#22c55e' }]
     : [];
 
-  const registeredCount = greenPoints.filter(g => g.courseId === course.id).length;
+  const registeredHoles = new Set(
+    greenPoints.filter(g => g.courseId === course.id && g.pointType === 'center').map(g => g.holeNumber)
+  );
 
   return (
-    <Modal title={`グリーン登録 — ${course.name}`} onClose={onClose}>
+    <Modal title={`ポイント登録 — ${course.name}`} onClose={onClose}>
       <div className="flex flex-col gap-3 pt-3" style={{ height: '70vh' }}>
-        {/* Progress */}
-        <p className="text-xs text-ll-mute text-center">{registeredCount} / {course.holes.length} ホール登録済み</p>
+        {/* Point type toggle */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => switchType('center')}
+            className={`flex-1 py-2 rounded-xl text-sm font-bold transition ${editingType === 'center' ? 'bg-green-600 text-white' : 'bg-ll-s2 text-ll-mute border border-ll-line'}`}
+          >
+            グリーン（センター）
+          </button>
+          <button
+            onClick={() => switchType('tee')}
+            className={`flex-1 py-2 rounded-xl text-sm font-bold transition ${editingType === 'tee' ? 'bg-orange-500 text-white' : 'bg-ll-s2 text-ll-mute border border-ll-line'}`}
+          >
+            ティー
+          </button>
+        </div>
 
         {/* Hole selector */}
         <div className="overflow-x-auto -mx-4 px-4">
           <div className="flex gap-1.5 pb-1">
             {course.holes.map(h => {
-              const hasPoint = greenPoints.some(g => g.courseId === course.id && g.holeNumber === h.holeNo && g.pointType === 'center');
+              const hasGreen = registeredHoles.has(h.holeNo);
+              const hasTee = greenPoints.some(g => g.courseId === course.id && g.holeNumber === h.holeNo && g.pointType === 'tee');
               return (
                 <button
                   key={h.holeNo}
@@ -272,8 +321,10 @@ function GreenRegistrationModal({
                   className={`flex-shrink-0 w-9 h-9 rounded-xl text-xs font-bold transition ${
                     selectedHole === h.holeNo
                       ? 'bg-ll-acc text-white'
-                      : hasPoint
+                      : hasGreen && hasTee
                       ? 'bg-green-100 text-green-700 border border-green-300'
+                      : hasGreen || hasTee
+                      ? 'bg-yellow-50 text-yellow-700 border border-yellow-300'
                       : 'bg-ll-s2 text-ll-mute border border-ll-line'
                   }`}
                 >
@@ -290,15 +341,18 @@ function GreenRegistrationModal({
             center={mapCenter}
             zoom={17}
             markers={markers}
+            polylines={polylines}
             onMapClick={handleMapClick}
-            panTo={panTo}
+            panTo={panToPos}
+            panToKey={panToKey}
             className="w-full h-full"
           />
         </div>
 
-        <p className="text-xs text-ll-mute text-center">地図をタップしてグリーン中心を設定</p>
+        <p className="text-xs text-ll-mute text-center">
+          地図をタップして{editingType === 'center' ? 'グリーン中心' : 'ティー'}を設定
+        </p>
 
-        {/* Actions */}
         <div className="flex gap-3">
           <button
             onClick={save}
