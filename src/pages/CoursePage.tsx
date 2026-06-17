@@ -1,11 +1,13 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import type { Course, CourseHole } from '../types';
+import type { Course, CourseHole, GreenPoint } from '../types';
 import { mockCourseProvider } from '../providers/MockCourseProvider';
 import { Card } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
-import { Plus, Search, ChevronRight, Trash2, Edit3, MapPin, Globe, Settings } from 'lucide-react';
+import { GolfMap } from '../components/map/GolfMap';
+import type { MapMarker } from '../components/map/GolfMap';
+import { Plus, Search, ChevronRight, Trash2, Edit3, MapPin, Globe, Settings, Flag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 function genId() { return crypto.randomUUID(); }
@@ -186,7 +188,140 @@ function CourseSearchModal({ onSelect, onClose }: { onSelect: (c: Course) => voi
   );
 }
 
-function CourseDetailModal({ course, onEdit, onDelete, onClose }: { course: Course; onEdit: () => void; onDelete: () => void; onClose: () => void }) {
+function GreenRegistrationModal({
+  course,
+  greenPoints,
+  onSave,
+  onDelete,
+  onClose,
+  initialHole,
+}: {
+  course: Course;
+  greenPoints: GreenPoint[];
+  onSave: (point: GreenPoint) => void;
+  onDelete: (id: string) => void;
+  onClose: () => void;
+  initialHole?: number;
+}) {
+  const [selectedHole, setSelectedHole] = useState(initialHole ?? 1);
+  const [pendingLatLng, setPendingLatLng] = useState<{ lat: number; lng: number } | null>(null);
+
+  const existingPoint = greenPoints.find(
+    g => g.courseId === course.id && g.holeNumber === selectedHole && g.pointType === 'center'
+  );
+
+  // When switching holes, clear pending tap and show existing point
+  function selectHole(n: number) {
+    setSelectedHole(n);
+    setPendingLatLng(null);
+  }
+
+  const handleMapClick = useCallback((lat: number, lng: number) => {
+    setPendingLatLng({ lat, lng });
+  }, []);
+
+  function save() {
+    if (!pendingLatLng) return;
+    onSave({
+      id: existingPoint?.id ?? genId(),
+      courseId: course.id,
+      holeNumber: selectedHole,
+      lat: pendingLatLng.lat,
+      lng: pendingLatLng.lng,
+      pointType: 'center',
+      updatedAt: new Date().toISOString(),
+    });
+    setPendingLatLng(null);
+  }
+
+  // Compute map center: existing point → pending → Japan fallback
+  const displayPoint = pendingLatLng ?? existingPoint ?? null;
+  const allPoints = greenPoints.filter(g => g.courseId === course.id);
+  const mapCenter: [number, number] = displayPoint
+    ? [displayPoint.lat, displayPoint.lng]
+    : allPoints.length > 0
+    ? [allPoints[0].lat, allPoints[0].lng]
+    : [35.0, 136.5];
+
+  const panTo: [number, number] | null = existingPoint && !pendingLatLng
+    ? [existingPoint.lat, existingPoint.lng]
+    : null;
+
+  const markers: MapMarker[] = displayPoint
+    ? [{ lat: displayPoint.lat, lng: displayPoint.lng, color: 'green', label: `H${selectedHole}`, draggable: true,
+        onDragEnd: (lat, lng) => setPendingLatLng({ lat, lng }) }]
+    : [];
+
+  const registeredCount = greenPoints.filter(g => g.courseId === course.id).length;
+
+  return (
+    <Modal title={`グリーン登録 — ${course.name}`} onClose={onClose}>
+      <div className="flex flex-col gap-3 pt-3" style={{ height: '70vh' }}>
+        {/* Progress */}
+        <p className="text-xs text-ll-mute text-center">{registeredCount} / {course.holes.length} ホール登録済み</p>
+
+        {/* Hole selector */}
+        <div className="overflow-x-auto -mx-4 px-4">
+          <div className="flex gap-1.5 pb-1">
+            {course.holes.map(h => {
+              const hasPoint = greenPoints.some(g => g.courseId === course.id && g.holeNumber === h.holeNo && g.pointType === 'center');
+              return (
+                <button
+                  key={h.holeNo}
+                  onClick={() => selectHole(h.holeNo)}
+                  className={`flex-shrink-0 w-9 h-9 rounded-xl text-xs font-bold transition ${
+                    selectedHole === h.holeNo
+                      ? 'bg-ll-acc text-white'
+                      : hasPoint
+                      ? 'bg-green-100 text-green-700 border border-green-300'
+                      : 'bg-ll-s2 text-ll-mute border border-ll-line'
+                  }`}
+                >
+                  {h.holeNo}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Map */}
+        <div className="flex-1 min-h-0 rounded-2xl overflow-hidden border border-ll-line">
+          <GolfMap
+            center={mapCenter}
+            zoom={17}
+            markers={markers}
+            onMapClick={handleMapClick}
+            panTo={panTo}
+            className="w-full h-full"
+          />
+        </div>
+
+        <p className="text-xs text-ll-mute text-center">地図をタップしてグリーン中心を設定</p>
+
+        {/* Actions */}
+        <div className="flex gap-3">
+          <button
+            onClick={save}
+            disabled={!pendingLatLng}
+            className="flex-1 bg-ll-acc text-white py-3 rounded-2xl font-bold text-sm disabled:opacity-40 active:opacity-80"
+          >
+            保存
+          </button>
+          {existingPoint && (
+            <button
+              onClick={() => { onDelete(existingPoint.id); setPendingLatLng(null); }}
+              className="px-4 py-3 rounded-2xl bg-ll-loss/10 text-ll-loss font-bold active:opacity-80"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function CourseDetailModal({ course, onEdit, onDelete, onClose, onGreen }: { course: Course; onEdit: () => void; onDelete: () => void; onClose: () => void; onGreen: () => void }) {
   const totalPar = course.holes.reduce((s, h) => s + h.par, 0);
   return (
     <Modal title={course.name} onClose={onClose}>
@@ -234,6 +369,10 @@ function CourseDetailModal({ course, onEdit, onDelete, onClose }: { course: Cour
           </table>
         </div>
         <div className="flex gap-3 pt-2">
+          <button onClick={onGreen}
+            className="flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-3 rounded-2xl font-bold active:opacity-80">
+            <Flag size={16} /> グリーン登録
+          </button>
           <button onClick={onEdit}
             className="flex-1 flex items-center justify-center gap-2 bg-ll-acc text-white py-3 rounded-2xl font-bold active:opacity-80">
             <Edit3 size={16} /> 編集
@@ -249,10 +388,19 @@ function CourseDetailModal({ course, onEdit, onDelete, onClose }: { course: Cour
 }
 
 export function CoursePage() {
-  const { state, saveCourse, deleteCourse } = useApp();
+  const { state, saveCourse, deleteCourse, saveGreenPoint, deleteGreenPoint } = useApp();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<'none' | 'new' | 'search' | 'detail' | 'edit'>('none');
+  const [searchParams] = useSearchParams();
+  const [mode, setMode] = useState<'none' | 'new' | 'search' | 'detail' | 'edit' | 'green'>('none');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Support direct link from GpsPage: /courses?green=<courseId>&hole=<n>
+  const greenParamCourseId = searchParams.get('green');
+  const greenParamHole = Number(searchParams.get('hole') ?? '1');
+  if (greenParamCourseId && mode === 'none' && !selectedId) {
+    setSelectedId(greenParamCourseId);
+    setMode('green');
+  }
 
   const courses = state.courses.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const selected = courses.find(c => c.id === selectedId) ?? null;
@@ -326,11 +474,24 @@ export function CoursePage() {
       {mode === 'new' && <CourseFormModal initial={blankCourse(genId())} onSave={handleSave} onClose={() => setMode('none')} />}
       {mode === 'search' && <CourseSearchModal onSelect={handleSave} onClose={() => setMode('none')} />}
       {mode === 'detail' && selected && (
-        <CourseDetailModal course={selected} onEdit={() => setMode('edit')} onDelete={handleDelete}
+        <CourseDetailModal course={selected}
+          onEdit={() => setMode('edit')}
+          onDelete={handleDelete}
+          onGreen={() => setMode('green')}
           onClose={() => { setMode('none'); setSelectedId(null); }} />
       )}
       {mode === 'edit' && selected && (
         <CourseFormModal initial={selected} onSave={handleSave} onClose={() => setMode('detail')} />
+      )}
+      {mode === 'green' && selected && (
+        <GreenRegistrationModal
+          course={selected}
+          greenPoints={state.greenPoints}
+          initialHole={greenParamHole}
+          onSave={point => saveGreenPoint(point)}
+          onDelete={id => deleteGreenPoint(id)}
+          onClose={() => { setMode(greenParamCourseId ? 'none' : 'detail'); }}
+        />
       )}
     </div>
   );

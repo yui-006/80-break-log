@@ -10,7 +10,7 @@ import {
   RESULT_CATEGORIES,
   SHOT_TYPE_LABELS, INITIAL_CLUBS, CLUB_ORDER,
 } from '../data/initial';
-import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, TableProperties } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, TableProperties, MapPin } from 'lucide-react';
 
 function genId() { return crypto.randomUUID(); }
 function nowStr() { return new Date().toISOString(); }
@@ -342,10 +342,16 @@ export function HoleInputPage() {
       <div className="bg-ll-surf text-ll-ink px-4 pt-12 pb-4 border-b border-ll-line">
         <div className="flex items-center justify-between mb-1">
           <p className="text-ll-mute text-xs">{round.date} · {round.courseName}</p>
-          <button onClick={() => navigate(`/rounds/${roundId}/scorecard`)}
-            className="flex items-center gap-1 text-ll-mute text-xs active:text-ll-acc">
-            <TableProperties size={14} /> スコアカード
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate(`/gps/${roundId}/${holeNo}`)}
+              className="flex items-center gap-1 text-ll-mute text-xs active:text-ll-acc">
+              <MapPin size={14} /> GPS
+            </button>
+            <button onClick={() => navigate(`/rounds/${roundId}/scorecard`)}
+              className="flex items-center gap-1 text-ll-mute text-xs active:text-ll-acc">
+              <TableProperties size={14} /> スコアカード
+            </button>
+          </div>
         </div>
         <div className="flex items-baseline justify-between">
           <div>

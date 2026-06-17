@@ -4,7 +4,7 @@
  * Data model: holes/shots stored as JSONB within rounds/courses rows.
  */
 import { supabase } from './supabase';
-import type { Course, Round, ClubSet, PracticeLogEntry } from '../types';
+import type { Course, Round, ClubSet, PracticeLogEntry, GreenPoint } from '../types';
 
 async function userId(): Promise<string | null> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -72,6 +72,21 @@ export async function syncGoalThreshold(goal: number, activeClubSetId: string | 
   }, { onConflict: 'id' });
 }
 
+export async function syncGreenPoint(point: GreenPoint): Promise<void> {
+  const uid = await userId();
+  if (!uid) return;
+  // Upsert by id; course ownership verified via RLS (courses.user_id = auth.uid())
+  await supabase.from('green_points').upsert({
+    id: point.id,
+    course_id: point.courseId,
+    hole_number: point.holeNumber,
+    lat: point.lat,
+    lng: point.lng,
+    point_type: point.pointType,
+    updated_at: ts(),
+  }, { onConflict: 'id' });
+}
+
 // ── Delete ─────────────────────────────────────────────────────────────────
 
 export async function deleteSyncCourse(id: string): Promise<void> {
@@ -90,6 +105,10 @@ export async function deleteSyncPracticeLog(id: string): Promise<void> {
   await supabase.from('practice_logs').delete().eq('id', id);
 }
 
+export async function deleteSyncGreenPoint(id: string): Promise<void> {
+  await supabase.from('green_points').delete().eq('id', id);
+}
+
 // ── Pull all (on login / startup) ─────────────────────────────────────────
 
 export type PullResult = {
@@ -97,6 +116,7 @@ export type PullResult = {
   rounds: Round[];
   clubSets: ClubSet[];
   practiceLogs: PracticeLogEntry[];
+  greenPoints: GreenPoint[];
   goalThreshold: number | null;
   activeClubSetId: string | null;
 };
@@ -113,41 +133,64 @@ export async function pullAll(): Promise<PullResult | null> {
     supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
   ]);
 
-  const courses: Course[] = (cr.data ?? []).map(r => ({
-    id: r.id, name: r.name,
-    location: r.location ?? undefined, prefecture: r.prefecture ?? undefined,
-    source: r.source ?? undefined, sourceId: r.source_id ?? undefined,
-    sourceUrl: r.source_url ?? undefined, memo: r.memo ?? undefined,
-    holes: r.holes ?? [],
-    createdAt: r.created_at, updatedAt: r.updated_at,
+  const courseIds = (cr.data ?? []).map((c: { id: string }) => c.id);
+  const gr = courseIds.length > 0
+    ? await supabase.from('green_points').select('*').in('course_id', courseIds)
+    : { data: [] };
+
+  const courses: Course[] = (cr.data ?? []).map((r: Record<string, unknown>) => ({
+    id: r.id as string, name: r.name as string,
+    location: (r.location as string | null) ?? undefined,
+    prefecture: (r.prefecture as string | null) ?? undefined,
+    source: (r.source as Course['source']) ?? undefined,
+    sourceId: (r.source_id as string | null) ?? undefined,
+    sourceUrl: (r.source_url as string | null) ?? undefined,
+    memo: (r.memo as string | null) ?? undefined,
+    holes: (r.holes as Course['holes']) ?? [],
+    createdAt: r.created_at as string, updatedAt: r.updated_at as string,
   }));
 
-  const rounds: Round[] = (rr.data ?? []).map(r => ({
-    id: r.id, courseId: r.course_id ?? '', courseName: r.course_name ?? '',
-    date: r.date, teeName: r.tee_name ?? undefined,
-    targetScore: r.target_score ?? undefined, weather: r.weather ?? undefined,
-    memo: r.memo ?? undefined,
+  const rounds: Round[] = (rr.data ?? []).map((r: Record<string, unknown>) => ({
+    id: r.id as string,
+    courseId: (r.course_id as string) ?? '',
+    courseName: (r.course_name as string) ?? '',
+    date: r.date as string,
+    teeName: (r.tee_name as string | null) ?? undefined,
+    targetScore: (r.target_score as number | null) ?? undefined,
+    weather: (r.weather as string | null) ?? undefined,
+    memo: (r.memo as string | null) ?? undefined,
     status: r.status as 'recording' | 'completed',
-    holes: r.holes ?? [],
-    createdAt: r.created_at, updatedAt: r.updated_at,
+    holes: (r.holes as Round['holes']) ?? [],
+    createdAt: r.created_at as string, updatedAt: r.updated_at as string,
   }));
 
-  const clubSets: ClubSet[] = (sr.data ?? []).map(r => ({
-    id: r.id, name: r.name,
-    clubs: r.clubs ?? [],
-    createdAt: r.created_at,
+  const clubSets: ClubSet[] = (sr.data ?? []).map((r: Record<string, unknown>) => ({
+    id: r.id as string, name: r.name as string,
+    clubs: (r.clubs as ClubSet['clubs']) ?? [],
+    createdAt: r.created_at as string,
   }));
 
-  const practiceLogs: PracticeLogEntry[] = (lr.data ?? []).map(r => ({
-    id: r.id, date: r.date,
-    menuName: r.menu_name ?? '', ballCount: r.ball_count ?? undefined,
-    createdAt: r.created_at,
+  const practiceLogs: PracticeLogEntry[] = (lr.data ?? []).map((r: Record<string, unknown>) => ({
+    id: r.id as string, date: r.date as string,
+    menuName: (r.menu_name as string | null) ?? '',
+    ballCount: (r.ball_count as number | null) ?? undefined,
+    createdAt: r.created_at as string,
+  }));
+
+  const greenPoints: GreenPoint[] = (gr.data ?? []).map((r: Record<string, unknown>) => ({
+    id: r.id as string,
+    courseId: r.course_id as string,
+    holeNumber: r.hole_number as number,
+    lat: r.lat as number,
+    lng: r.lng as number,
+    pointType: 'center' as const,
+    updatedAt: r.updated_at as string,
   }));
 
   return {
-    courses, rounds, clubSets, practiceLogs,
-    goalThreshold: pr.data?.goal_threshold ?? null,
-    activeClubSetId: pr.data?.active_club_set_id ?? null,
+    courses, rounds, clubSets, practiceLogs, greenPoints,
+    goalThreshold: (pr.data as Record<string, unknown> | null)?.goal_threshold as number | null ?? null,
+    activeClubSetId: (pr.data as Record<string, unknown> | null)?.active_club_set_id as string | null ?? null,
   };
 }
 
@@ -158,6 +201,7 @@ export async function pushAll(
   rounds: Round[],
   clubSets: ClubSet[],
   practiceLogs: PracticeLogEntry[],
+  greenPoints: GreenPoint[],
   goalThreshold: number,
   activeClubSetId: string | null,
 ): Promise<void> {
@@ -202,6 +246,14 @@ export async function pushAll(
         })), { onConflict: 'id' })
       : Promise.resolve(),
 
+    greenPoints.length > 0
+      ? supabase.from('green_points').upsert(greenPoints.map(g => ({
+          id: g.id, course_id: g.courseId,
+          hole_number: g.holeNumber, lat: g.lat, lng: g.lng,
+          point_type: g.pointType, updated_at: now,
+        })), { onConflict: 'id' })
+      : Promise.resolve(),
+
     supabase.from('profiles').upsert({
       id: uid, goal_threshold: goalThreshold,
       active_club_set_id: activeClubSetId, updated_at: now,
@@ -211,15 +263,15 @@ export async function pushAll(
 
 // ── Merge helper (last-write-wins by updatedAt) ────────────────────────────
 
-function mergeById<T extends { id: string; updatedAt?: string; createdAt: string }>(
+function mergeById<T extends { id: string; updatedAt?: string; createdAt?: string }>(
   local: T[], cloud: T[],
 ): T[] {
   const map = new Map<string, T>();
   for (const item of local) map.set(item.id, item);
   for (const item of cloud) {
     const existing = map.get(item.id);
-    const cloudTime = item.updatedAt ?? item.createdAt;
-    const localTime = existing ? (existing.updatedAt ?? existing.createdAt) : '';
+    const cloudTime = item.updatedAt ?? item.createdAt ?? '';
+    const localTime = existing ? (existing.updatedAt ?? existing.createdAt ?? '') : '';
     if (!existing || cloudTime > localTime) map.set(item.id, item);
   }
   return Array.from(map.values());
@@ -230,15 +282,18 @@ export function mergeWithLocal(
   local: {
     courses: Course[]; rounds: Round[];
     clubSets: ClubSet[]; practiceLogs: PracticeLogEntry[];
+    greenPoints: GreenPoint[];
   },
 ): {
   courses: Course[]; rounds: Round[];
   clubSets: ClubSet[]; practiceLogs: PracticeLogEntry[];
+  greenPoints: GreenPoint[];
 } {
   return {
     courses:      mergeById(local.courses,      pulled.courses),
     rounds:       mergeById(local.rounds,       pulled.rounds),
     clubSets:     mergeById(local.clubSets,     pulled.clubSets),
     practiceLogs: mergeById(local.practiceLogs, pulled.practiceLogs),
+    greenPoints:  mergeById(local.greenPoints,  pulled.greenPoints),
   };
 }

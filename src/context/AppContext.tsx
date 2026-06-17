@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
 import type { User } from '@supabase/supabase-js';
-import type { Course, Round, Club, ClubSet, PracticeMenuItem, PracticeLogEntry, AppData } from '../types';
+import type { Course, Round, Club, ClubSet, PracticeMenuItem, PracticeLogEntry, GreenPoint, AppData } from '../types';
 import { storage } from '../db/indexedDB';
 import { INITIAL_CLUBS } from '../data/initial';
 import { supabase } from '../lib/supabase';
 import {
-  syncCourse, syncRound, syncClubSet, syncPracticeLog, syncGoalThreshold,
-  deleteSyncCourse, deleteSyncRound, deleteSyncClubSet, deleteSyncPracticeLog,
+  syncCourse, syncRound, syncClubSet, syncPracticeLog, syncGoalThreshold, syncGreenPoint,
+  deleteSyncCourse, deleteSyncRound, deleteSyncClubSet, deleteSyncPracticeLog, deleteSyncGreenPoint,
   pullAll, pushAll, mergeWithLocal,
 } from '../lib/sync';
 
@@ -34,6 +34,7 @@ type AppState = {
   activeClubSetId: string | null;
   practiceMenuItems: PracticeMenuItem[];
   practiceLogs: PracticeLogEntry[];
+  greenPoints: GreenPoint[];
   goalThreshold: number;
   user: User | null;
   syncStatus: SyncStatus;
@@ -42,7 +43,7 @@ type AppState = {
 };
 
 type AppAction =
-  | { type: 'LOAD'; payload: { courses: Course[]; rounds: Round[]; clubSets: ClubSet[]; activeClubSetId: string | null; practiceMenuItems: PracticeMenuItem[]; practiceLogs: PracticeLogEntry[] } }
+  | { type: 'LOAD'; payload: { courses: Course[]; rounds: Round[]; clubSets: ClubSet[]; activeClubSetId: string | null; practiceMenuItems: PracticeMenuItem[]; practiceLogs: PracticeLogEntry[]; greenPoints: GreenPoint[] } }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'UPSERT_COURSE'; payload: Course }
@@ -56,11 +57,13 @@ type AppAction =
   | { type: 'DELETE_PRACTICE_MENU_ITEM'; payload: string }
   | { type: 'UPSERT_PRACTICE_LOG'; payload: PracticeLogEntry }
   | { type: 'DELETE_PRACTICE_LOG'; payload: string }
+  | { type: 'UPSERT_GREEN_POINT'; payload: GreenPoint }
+  | { type: 'DELETE_GREEN_POINT'; payload: string }
   | { type: 'LOAD_DATA'; payload: AppData }
   | { type: 'SET_GOAL'; payload: number }
   | { type: 'SET_USER'; payload: User | null }
   | { type: 'SET_SYNC_STATUS'; payload: SyncStatus }
-  | { type: 'MERGE_CLOUD'; payload: { courses: Course[]; rounds: Round[]; clubSets: ClubSet[]; practiceLogs: PracticeLogEntry[]; goalThreshold?: number | null; activeClubSetId?: string | null } };
+  | { type: 'MERGE_CLOUD'; payload: { courses: Course[]; rounds: Round[]; clubSets: ClubSet[]; practiceLogs: PracticeLogEntry[]; greenPoints: GreenPoint[]; goalThreshold?: number | null; activeClubSetId?: string | null } };
 
 function activeClubs(sets: ClubSet[], activeId: string | null): Club[] {
   return sets.find(s => s.id === activeId)?.clubs ?? [];
@@ -72,6 +75,7 @@ function reducer(state: AppState, action: AppAction): AppState {
       const clubs = activeClubs(action.payload.clubSets, action.payload.activeClubSetId);
       return { ...state, ...action.payload, clubs, loading: false };
     }
+
     case 'SET_LOADING':  return { ...state, loading: action.payload };
     case 'SET_ERROR':    return { ...state, error: action.payload };
     case 'SET_USER':     return { ...state, user: action.payload };
@@ -119,6 +123,13 @@ function reducer(state: AppState, action: AppAction): AppState {
     case 'DELETE_PRACTICE_LOG':
       return { ...state, practiceLogs: state.practiceLogs.filter(l => l.id !== action.payload) };
 
+    case 'UPSERT_GREEN_POINT':
+      return { ...state, greenPoints: state.greenPoints.some(g => g.id === action.payload.id)
+        ? state.greenPoints.map(g => g.id === action.payload.id ? action.payload : g)
+        : [...state.greenPoints, action.payload] };
+    case 'DELETE_GREEN_POINT':
+      return { ...state, greenPoints: state.greenPoints.filter(g => g.id !== action.payload) };
+
     case 'LOAD_DATA': {
       const sets = action.payload.clubSets ?? [];
       const activeId = action.payload.activeClubSetId ?? sets[0]?.id ?? null;
@@ -136,10 +147,10 @@ function reducer(state: AppState, action: AppAction): AppState {
       return { ...state, goalThreshold: action.payload };
 
     case 'MERGE_CLOUD': {
-      const { courses, rounds, clubSets, practiceLogs, goalThreshold, activeClubSetId } = action.payload;
+      const { courses, rounds, clubSets, practiceLogs, greenPoints, goalThreshold, activeClubSetId } = action.payload;
       const newActiveId = activeClubSetId ?? state.activeClubSetId;
       return { ...state,
-        courses, rounds, clubSets, practiceLogs,
+        courses, rounds, clubSets, practiceLogs, greenPoints,
         activeClubSetId: newActiveId,
         clubs: activeClubs(clubSets, newActiveId),
         goalThreshold: goalThreshold ?? state.goalThreshold,
@@ -173,6 +184,8 @@ type AppContextType = {
   deletePracticeMenuItem: (id: string) => Promise<void>;
   savePracticeLog: (entry: PracticeLogEntry) => Promise<void>;
   deletePracticeLog: (id: string) => Promise<void>;
+  saveGreenPoint: (point: GreenPoint) => Promise<void>;
+  deleteGreenPoint: (id: string) => Promise<void>;
   exportData: () => Promise<string>;
   importData: (json: string) => Promise<void>;
   clearAll: () => Promise<void>;
@@ -185,7 +198,7 @@ const AppContext = createContext<AppContextType | null>(null);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, {
     courses: [], rounds: [], clubs: [], clubSets: [],
-    activeClubSetId: null, practiceMenuItems: [], practiceLogs: [],
+    activeClubSetId: null, practiceMenuItems: [], practiceLogs: [], greenPoints: [],
     goalThreshold: Number(localStorage.getItem(GOAL_KEY) ?? DEFAULT_GOAL) || DEFAULT_GOAL,
     user: null, syncStatus: 'idle',
     loading: true, error: null,
@@ -200,9 +213,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const [courses, rounds, existingClubs, clubSets, practiceMenuItems, practiceLogs] = await Promise.all([
+        const [courses, rounds, existingClubs, clubSets, practiceMenuItems, practiceLogs, greenPoints] = await Promise.all([
           storage.getCourses(), storage.getRounds(), storage.getClubs(),
           storage.getClubSets(), storage.getPracticeMenuItems(), storage.getPracticeLogs(),
+          storage.getGreenPoints(),
         ]);
 
         let sets = clubSets;
@@ -220,7 +234,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const activeId = sets.find(s => s.id === storedId)?.id ?? sets[0].id;
         if (!storedId) localStorage.setItem(ACTIVE_SET_KEY, activeId);
 
-        dispatch({ type: 'LOAD', payload: { courses, rounds, clubSets: sets, activeClubSetId: activeId, practiceMenuItems, practiceLogs } });
+        dispatch({ type: 'LOAD', payload: { courses, rounds, clubSets: sets, activeClubSetId: activeId, practiceMenuItems, practiceLogs, greenPoints } });
       } catch {
         dispatch({ type: 'SET_ERROR', payload: 'データの読み込みに失敗しました' });
         dispatch({ type: 'SET_LOADING', payload: false });
@@ -262,7 +276,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!alreadyMigrated) {
         // First login: push all local data to Supabase
         await pushAll(
-          cur.courses, cur.rounds, cur.clubSets, cur.practiceLogs,
+          cur.courses, cur.rounds, cur.clubSets, cur.practiceLogs, cur.greenPoints,
           cur.goalThreshold, cur.activeClubSetId,
         );
         localStorage.setItem(MIGRATED_KEY, 'true');
@@ -271,6 +285,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const merged = mergeWithLocal(pulled, {
           courses: cur.courses, rounds: cur.rounds,
           clubSets: cur.clubSets, practiceLogs: cur.practiceLogs,
+          greenPoints: cur.greenPoints,
         });
 
         // Persist merged data to IndexedDB
@@ -280,6 +295,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ...merged.rounds.map(r => db.saveRound(r)),
           ...merged.clubSets.map(s => db.saveClubSet(s)),
           ...merged.practiceLogs.map(l => db.savePracticeLog(l)),
+          ...merged.greenPoints.map(g => db.saveGreenPoint(g)),
         ]);
 
         dispatch({ type: 'MERGE_CLOUD', payload: {
@@ -427,6 +443,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     bg(deleteSyncPracticeLog(id));
   }, []);
 
+  // ── Green points ──────────────────────────────────────────────────────────
+
+  const saveGreenPoint = useCallback(async (point: GreenPoint) => {
+    // Reuse existing id if a point for this course+hole+type already exists
+    const existing = stateRef.current.greenPoints.find(
+      g => g.courseId === point.courseId && g.holeNumber === point.holeNumber && g.pointType === point.pointType
+    );
+    const toSave = existing ? { ...point, id: existing.id } : point;
+    await storage.saveGreenPoint(toSave);
+    dispatch({ type: 'UPSERT_GREEN_POINT', payload: toSave });
+    bg(syncGreenPoint(toSave));
+  }, []);
+
+  const deleteGreenPoint = useCallback(async (id: string) => {
+    await storage.deleteGreenPoint(id);
+    dispatch({ type: 'DELETE_GREEN_POINT', payload: id });
+    bg(deleteSyncGreenPoint(id));
+  }, []);
+
   // ── Export / Import / Clear ───────────────────────────────────────────────
 
   const exportData = useCallback(async () => {
@@ -446,7 +481,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await storage.saveClubSet(defaultSet);
     localStorage.setItem(ACTIVE_SET_KEY, defaultSet.id);
     localStorage.removeItem(MIGRATED_KEY);
-    dispatch({ type: 'LOAD', payload: { courses: [], rounds: [], clubSets: [defaultSet], activeClubSetId: defaultSet.id, practiceMenuItems: [], practiceLogs: [] } });
+    dispatch({ type: 'LOAD', payload: { courses: [], rounds: [], clubSets: [defaultSet], activeClubSetId: defaultSet.id, practiceMenuItems: [], practiceLogs: [], greenPoints: [] } });
   }, []);
 
   return (
@@ -463,6 +498,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveClubSet, deleteClubSet, setActiveClubSet,
       savePracticeMenuItem, deletePracticeMenuItem,
       savePracticeLog, deletePracticeLog,
+      saveGreenPoint, deleteGreenPoint,
       exportData, importData, clearAll,
     }}>
       {children}

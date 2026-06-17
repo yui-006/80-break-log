@@ -153,6 +153,16 @@ export type CourseSearchResult = {
   source: string;
 };
 
+export type GreenPoint = {
+  id: string;
+  courseId: string;
+  holeNumber: number;
+  lat: number;
+  lng: number;
+  pointType: 'center';
+  updatedAt: string;
+};
+
 export type AppData = {
   courses: Course[];
   rounds: Round[];
@@ -161,6 +171,7 @@ export type AppData = {
   activeClubSetId?: string;
   practiceMenuItems?: PracticeMenuItem[];
   practiceLogs?: PracticeLogEntry[];
+  greenPoints?: GreenPoint[];
   exportedAt: string;
   version: string;
 };

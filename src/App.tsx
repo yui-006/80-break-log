@@ -11,14 +11,17 @@ import { AnalysisPage } from './pages/AnalysisPage';
 import { PracticePage } from './pages/PracticePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AuthPage } from './pages/AuthPage';
+import { GpsPage } from './pages/GpsPage';
 
 export default function App() {
   return (
     <AppProvider>
       <HashRouter>
         <Routes>
-          {/* Auth page: standalone, no bottom nav */}
+          {/* Standalone pages: no bottom nav */}
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/gps" element={<GpsPage />} />
+          <Route path="/gps/:roundId/:holeNo" element={<GpsPage />} />
           {/* Main app */}
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
