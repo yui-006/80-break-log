@@ -4,6 +4,9 @@ import { storage } from '../db/indexedDB';
 import { INITIAL_CLUBS } from '../data/initial';
 
 const ACTIVE_SET_KEY = '80bl-active-set';
+const GOAL_KEY = '80bl-goal';
+const DEFAULT_GOAL = 95;
+
 function genId() { return crypto.randomUUID(); }
 
 type AppState = {
@@ -14,6 +17,7 @@ type AppState = {
   activeClubSetId: string | null;
   practiceMenuItems: PracticeMenuItem[];
   practiceLogs: PracticeLogEntry[];
+  goalThreshold: number;
   loading: boolean;
   error: string | null;
 };
@@ -33,7 +37,8 @@ type AppAction =
   | { type: 'DELETE_PRACTICE_MENU_ITEM'; payload: string }
   | { type: 'UPSERT_PRACTICE_LOG'; payload: PracticeLogEntry }
   | { type: 'DELETE_PRACTICE_LOG'; payload: string }
-  | { type: 'LOAD_DATA'; payload: AppData };
+  | { type: 'LOAD_DATA'; payload: AppData }
+  | { type: 'SET_GOAL'; payload: number };
 
 function activeClubs(sets: ClubSet[], activeId: string | null): Club[] {
   return sets.find(s => s.id === activeId)?.clubs ?? [];
@@ -111,6 +116,8 @@ function reducer(state: AppState, action: AppAction): AppState {
         practiceLogs: action.payload.practiceLogs ?? [],
       };
     }
+    case 'SET_GOAL':
+      return { ...state, goalThreshold: action.payload };
     default:
       return state;
   }
@@ -118,6 +125,8 @@ function reducer(state: AppState, action: AppAction): AppState {
 
 type AppContextType = {
   state: AppState;
+  goalThreshold: number;
+  setGoalThreshold: (v: number) => void;
   saveCourse: (course: Course) => Promise<void>;
   deleteCourse: (id: string) => Promise<void>;
   saveRound: (round: Round) => Promise<void>;
@@ -147,6 +156,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     activeClubSetId: null,
     practiceMenuItems: [],
     practiceLogs: [],
+    goalThreshold: Number(localStorage.getItem(GOAL_KEY) ?? DEFAULT_GOAL) || DEFAULT_GOAL,
     loading: true,
     error: null,
   });
@@ -165,7 +175,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         let sets = clubSets;
         if (sets.length === 0) {
-          // 初回起動：既存クラブ or INITIAL_CLUBSからデフォルトセット作成
           const initClubs = existingClubs.length > 0 ? existingClubs : INITIAL_CLUBS;
           if (existingClubs.length === 0) {
             for (const c of INITIAL_CLUBS) await storage.saveClub(c);
@@ -192,6 +201,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
+  const setGoalThreshold = useCallback((v: number) => {
+    localStorage.setItem(GOAL_KEY, String(v));
+    dispatch({ type: 'SET_GOAL', payload: v });
+  }, []);
+
   const saveCourse = useCallback(async (course: Course) => {
     await storage.saveCourse(course);
     dispatch({ type: 'UPSERT_COURSE', payload: course });
@@ -212,7 +226,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'DELETE_ROUND', payload: id });
   }, []);
 
-  // クラブ保存：アクティブセットの clubs 配列を更新
   const saveClub = useCallback(async (club: Club) => {
     const activeSet = state.clubSets.find(s => s.id === state.activeClubSetId);
     if (!activeSet) return;
@@ -296,6 +309,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider value={{
       state,
+      goalThreshold: state.goalThreshold,
+      setGoalThreshold,
       saveCourse, deleteCourse,
       saveRound, deleteRound,
       saveClub, deleteClub,

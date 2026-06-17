@@ -5,7 +5,8 @@ import type { Course, CourseHole } from '../types';
 import { mockCourseProvider } from '../providers/MockCourseProvider';
 import { Card } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
-import { Plus, Search, ChevronRight, Trash2, Edit3, MapPin, Globe } from 'lucide-react';
+import { Plus, Search, ChevronRight, Trash2, Edit3, MapPin, Globe, Settings } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 function genId() { return crypto.randomUUID(); }
 function now() { return new Date().toISOString(); }
@@ -265,15 +266,18 @@ export function CoursePage() {
 
   return (
     <div className="min-h-full bg-ll-bg">
-      <div className="px-5 pt-12 pb-5 flex items-end justify-between">
-        <h1 className="text-2xl font-bold text-ll-ink">コース管理</h1>
+      <div className="px-5 pt-12 pb-5">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold text-ll-ink">コース管理</h1>
+          <Link to="/settings" className="text-ll-mute active:text-ll-ink p-1"><Settings size={22} /></Link>
+        </div>
         <div className="flex gap-2">
           <button onClick={() => setMode('search')}
-            className="flex items-center gap-1 bg-ll-s2 text-ll-ink px-3 py-2 rounded-xl text-sm font-medium border border-ll-line active:bg-ll-line">
+            className="flex-1 flex items-center justify-center gap-1 bg-ll-s2 text-ll-ink px-3 py-2.5 rounded-xl text-sm font-medium border border-ll-line active:bg-ll-line">
             <Search size={14} /> ネット検索
           </button>
           <button onClick={() => setMode('new')}
-            className="flex items-center gap-1 bg-ll-acc text-white px-3 py-2 rounded-xl text-sm font-bold active:opacity-80">
+            className="flex-1 flex items-center justify-center gap-1 bg-ll-acc text-white px-3 py-2.5 rounded-xl text-sm font-bold active:opacity-80">
             <Plus size={14} /> 手入力
           </button>
         </div>

@@ -12,7 +12,8 @@ const INPUT_CLS = 'mt-1 w-full border border-ll-line bg-ll-s2 text-ll-ink rounde
 const LABEL_CLS = 'text-xs text-ll-mute';
 
 export function SettingsPage() {
-  const { state, exportData, importData, clearAll, saveClub, deleteClub, saveClubSet, deleteClubSet, setActiveClubSet } = useApp();
+  const { state, goalThreshold, setGoalThreshold, exportData, importData, clearAll, saveClub, deleteClub, saveClubSet, deleteClubSet, setActiveClubSet } = useApp();
+  const GOAL_OPTIONS = [100, 95, 90, 85, 80] as const;
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState('');
   const [showClear, setShowClear] = useState(false);
@@ -107,6 +108,27 @@ export function SettingsPage() {
         {msg && (
           <div className="bg-ll-weak border border-ll-acc/30 text-ll-acc text-sm px-4 py-3 rounded-2xl">{msg}</div>
         )}
+
+        {/* Goal threshold */}
+        <Card className="p-4">
+          <h2 className="font-bold text-ll-ink mb-1">目標スコア</h2>
+          <p className="text-xs text-ll-mute mb-3">ホーム画面の達成率・SG分析のベンチマークに使用されます</p>
+          <div className="flex gap-2">
+            {GOAL_OPTIONS.map(opt => (
+              <button
+                key={opt}
+                onClick={() => setGoalThreshold(opt)}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-colors ${
+                  goalThreshold === opt
+                    ? 'bg-ll-acc text-white border-ll-acc'
+                    : 'bg-ll-s2 text-ll-ink border-ll-line active:bg-ll-line'
+                }`}
+              >
+                {opt}打
+              </button>
+            ))}
+          </div>
+        </Card>
 
         {/* Club Sets */}
         <Card className="p-4">

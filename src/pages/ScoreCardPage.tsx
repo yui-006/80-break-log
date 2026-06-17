@@ -138,7 +138,7 @@ export function ScoreCardPage() {
                 <th className="px-2 py-2">Par</th>
                 <th className="px-2 py-2">Score</th>
                 <th className="px-2 py-2">OB/Pen</th>
-                <th className="px-2 py-2">改善打数</th>
+                <th className="px-2 py-2">改善打数<span className="font-normal text-ll-mute ml-0.5" title="このホールで失った推定打数">(i)</span></th>
               </tr>
             </thead>
             <tbody>

@@ -1,9 +1,9 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { calcLosses, calcMissTendencies, generatePracticeMenu } from '../analytics';
 import { calcScoreStats } from '../analytics';
-import { m3TargetRate, m7GIR, m5ThreePutt, m10ParSave, m9FairwayHit, m14LossDistShort, m15LossDirection } from '../lib/metrics';
-import { Bell, Flag, ChevronRight, Play, Target, TrendingDown } from 'lucide-react';
+import { m3TargetRate, m7GIR, m5ThreePutt, m10ParSave, m9FairwayHit } from '../lib/metrics';
+import { Flag, ChevronRight, Play, Target, Settings } from 'lucide-react';
 
 const CONTOUR = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='190' height='160'><g fill='none' stroke='%232F6B4F' stroke-opacity='0.28' stroke-width='1.2'><path d='M10,150 C60,110 60,70 120,55 C160,45 175,20 188,5'/><path d='M30,158 C80,120 80,80 135,66 C172,57 184,32 196,16'/><path d='M52,165 C100,130 100,92 150,80 C184,71 196,48 208,30'/></g></svg>")`;
 
@@ -31,7 +31,7 @@ function ScoreCircle({ score, par }: { score: number; par: number }) {
 }
 
 export function HomePage() {
-  const { state } = useApp();
+  const { state, goalThreshold } = useApp();
   const navigate = useNavigate();
   const { rounds } = state;
 
@@ -42,15 +42,13 @@ export function HomePage() {
   const latest = completedRounds[0];
   const latestStats = latest ? calcScoreStats(latest.holes) : null;
   const recentRounds = completedRounds.slice(0, 3);
+
+  const targetRate = m3TargetRate(completedRounds, goalThreshold);
+
   const rawLosses = recentRounds.length > 0 ? calcLosses(recentRounds).filter(l => l.count > 0).slice(0, 5) : [];
   const losses = rawLosses.map(l => ({ ...l, perRoundLoss: Math.round(l.estimatedLoss / recentRounds.length * 10) / 10 }));
   const topActions = recentRounds.length > 0 ? generatePracticeMenu(calcMissTendencies(recentRounds)).slice(0, 2) : [];
   const totalLossPotential = Math.round(losses.reduce((s, l) => s + l.perRoundLoss, 0) * 10) / 10;
-
-  const targetRate = m3TargetRate(completedRounds);
-  const loss14 = m14LossDistShort(recentRounds);
-  const loss15 = m15LossDirection(recentRounds);
-  const totalWedgeLoss = Math.round((loss14 + loss15) * 10) / 10;
 
   return (
     <div className="min-h-full bg-ll-bg">
@@ -58,13 +56,13 @@ export function HomePage() {
       <div className="px-5 pt-12 pb-4">
         <div className="flex items-center justify-between">
           <span className="text-ll-ink text-xl font-black tracking-widest">80 BREAK LOG</span>
-          <button className="text-ll-mute active:text-ll-ink">
-            <Bell size={22} />
-          </button>
+          <Link to="/settings" className="text-ll-mute active:text-ll-ink p-1">
+            <Settings size={22} />
+          </Link>
         </div>
         {targetRate && targetRate.n > 0 && (
           <p className="text-ll-mute text-xs mt-1">
-            目標達成 <span className="text-ll-acc font-bold">{targetRate.hit}/{targetRate.n}</span>R
+            目標{goalThreshold}打 達成 <span className="text-ll-acc font-bold">{targetRate.hit}/{targetRate.n}</span>R
           </p>
         )}
       </div>
@@ -137,7 +135,7 @@ export function HomePage() {
           </div>
         )}
 
-        {/* 2x2 stats — このR */}
+        {/* 2x2 stats */}
         {latest && (() => {
           const gir = m7GIR(latest.holes);
           const tp  = m5ThreePutt(latest.holes);
@@ -148,7 +146,7 @@ export function HomePage() {
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-ll-surf border border-ll-line rounded-[22px] p-4 text-center shadow-card">
                 <p className="text-2xl font-black text-ll-ink">{gir ? `${gir.hit}/${gir.n}` : '−'}</p>
-                <p className="text-xs text-ll-mute mt-0.5">GIR</p>
+                <p className="text-xs text-ll-mute mt-0.5">GIR（パーオン）</p>
               </div>
               <div className="bg-ll-surf border border-ll-line rounded-[22px] p-4 text-center shadow-card">
                 <p className="text-2xl font-black text-ll-warn">{tp ? tp.count : '−'}</p>
@@ -173,16 +171,14 @@ export function HomePage() {
               失点ランキング TOP{losses.length}
             </h2>
             <p className="text-ll-mute text-xs mb-3">
-              改善で1ラウンドあたり約{totalLossPotential}打縮まる見込み
+              改善で1Rあたり約{totalLossPotential}打縮まる見込み
             </p>
             <div className="space-y-2.5">
               {losses.map((l, i) => (
                 <div key={l.key} className="flex items-center gap-3">
                   <span className="text-ll-acc font-black text-sm w-4 flex-shrink-0">{i + 1}</span>
                   <span className="flex-1 text-ll-ink text-sm">{l.label}を無くす</span>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-ll-loss font-bold text-sm whitespace-nowrap">{l.perRoundLoss}打/R</p>
-                  </div>
+                  <span className="text-ll-loss font-bold text-sm whitespace-nowrap">{l.perRoundLoss}打/R</span>
                 </div>
               ))}
             </div>
@@ -214,32 +210,6 @@ export function HomePage() {
                   </ul>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {/* 伸びしろ — m14/m15 ウェッジ */}
-        {recentRounds.length > 0 && totalWedgeLoss > 0 && (
-          <div className="bg-ll-surf border border-ll-line rounded-[22px] p-5 shadow-card">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingDown size={15} className="text-ll-acc" />
-              <h2 className="text-ll-ink font-bold text-sm tracking-wide">ウェッジ伸びしろ</h2>
-              <span className="text-ll-dim text-xs ml-auto">直近{recentRounds.length}R平均</span>
-            </div>
-            <p className="text-ll-mute text-xs mb-3">改善で1ラウンド約{totalWedgeLoss}打縮まる見込み</p>
-            <div className="space-y-2">
-              {loss14 > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-ll-ink text-sm">距離不足（PW以下）</span>
-                  <span className="text-ll-loss font-bold text-sm">{loss14}打/R</span>
-                </div>
-              )}
-              {loss15 > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-ll-ink text-sm">方向ミス（PW以下）</span>
-                  <span className="text-ll-loss font-bold text-sm">{loss15}打/R</span>
-                </div>
-              )}
             </div>
           </div>
         )}

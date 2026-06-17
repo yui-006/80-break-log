@@ -7,7 +7,8 @@ import { m7GIR } from '../lib/metrics';
 import { Card } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
 import { WEATHER_OPTIONS } from '../data/initial';
-import { ClipboardList, Plus, ChevronRight, Trash2 } from 'lucide-react';
+import { ClipboardList, Plus, ChevronRight, Trash2, Settings } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 function genId() { return crypto.randomUUID(); }
 function nowStr() { return new Date().toISOString(); }
@@ -151,11 +152,14 @@ export function RecordPage() {
 
   return (
     <div className="min-h-full bg-ll-bg">
-      <div className="px-5 pt-12 pb-5 flex items-end justify-between">
-        <h1 className="text-2xl font-bold text-ll-ink">ラウンド記録</h1>
+      <div className="px-5 pt-12 pb-5">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold text-ll-ink">ラウンド記録</h1>
+          <Link to="/settings" className="text-ll-mute active:text-ll-ink p-1"><Settings size={22} /></Link>
+        </div>
         <button onClick={() => setShowStart(true)}
-          className="flex items-center gap-1 bg-ll-acc text-white px-3 py-2 rounded-xl text-sm font-bold active:opacity-80">
-          <Plus size={14} /> 新しいラウンド
+          className="w-full flex items-center justify-center gap-1.5 bg-ll-acc text-white py-3 rounded-xl text-sm font-bold active:opacity-80">
+          <Plus size={16} /> 新しいラウンドを開始
         </button>
       </div>
 

@@ -99,7 +99,7 @@ export type M3 = { hit: number; n: number } | null;
  * 各ラウンドの targetScore、未設定時は defaultThreshold を使用。
  * 判定は score < threshold（スコアが目標を下回ったら達成）。
  */
-export function m3TargetRate(rounds: Round[], defaultThreshold = 80): M3 {
+export function m3TargetRate(rounds: Round[], defaultThreshold = 95): M3 {
   if (!rounds.length) return null;
   const hit = rounds.filter(r => {
     const th    = r.targetScore ?? defaultThreshold;

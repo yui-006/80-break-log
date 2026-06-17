@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { calcMissTendencies, generatePracticeMenu } from '../analytics';
 import type { PracticeLogEntry } from '../types';
-import { Flame, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Flame, Plus, Pencil, Trash2, Settings } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Modal } from '../components/ui/Modal';
 
 const HEATMAP_WEEKS = 10;
@@ -143,17 +144,20 @@ export function PracticePage() {
   return (
     <div className="min-h-full bg-ll-bg">
       {/* Header */}
-      <div className="px-5 pt-12 pb-4 flex items-center justify-between">
-        <div>
+      <div className="px-5 pt-12 pb-4">
+        <div className="flex items-center justify-between mb-1">
           <h1 className="text-2xl font-bold text-ll-ink">練習</h1>
-          <p className="text-ll-mute text-xs mt-0.5">{today}</p>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 bg-ll-surf border border-ll-line rounded-xl px-3 py-2">
+              <Flame size={15} className={streak > 0 ? 'text-ll-warn' : 'text-ll-dim'} />
+              <span className={`text-sm font-bold ${streak > 0 ? 'text-ll-ink' : 'text-ll-dim'}`}>
+                {streak > 0 ? `${streak}週` : '−'}
+              </span>
+            </div>
+            <Link to="/settings" className="text-ll-mute active:text-ll-ink p-1"><Settings size={22} /></Link>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 bg-ll-surf border border-ll-line rounded-xl px-3 py-2">
-          <Flame size={15} className={streak > 0 ? 'text-ll-warn' : 'text-ll-dim'} />
-          <span className={`text-sm font-bold ${streak > 0 ? 'text-ll-ink' : 'text-ll-dim'}`}>
-            {streak > 0 ? `${streak}週` : '−'}
-          </span>
-        </div>
+        <p className="text-ll-mute text-xs">{today}</p>
       </div>
 
       <div className="px-4 pb-6 space-y-4">

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, ClipboardList, MapPin, BarChart2, Target, Settings } from 'lucide-react';
+import { Home, ClipboardList, MapPin, BarChart2, Target } from 'lucide-react';
 
 const NAV_ITEMS = [
   { to: '/',         label: 'ホーム', Icon: Home },
@@ -7,7 +7,6 @@ const NAV_ITEMS = [
   { to: '/courses',  label: 'コース', Icon: MapPin },
   { to: '/analysis', label: '分析',   Icon: BarChart2 },
   { to: '/practice', label: '練習',   Icon: Target },
-  { to: '/settings', label: '設定',   Icon: Settings },
 ];
 
 export function BottomNav() {

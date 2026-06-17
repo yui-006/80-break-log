@@ -1,13 +1,15 @@
+import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { calcScoreStats, calcLosses, calcMissTendencies, calcMissTrend, calcClubStats, calcClubDistanceStats } from '../analytics';
 import type { ClubStat } from '../analytics';
 import { m7GIR, m10ParSave } from '../lib/metrics';
+import { computeSGAttribution, SG_CAT_LABEL } from '../lib/metrics/sg';
 import { INITIAL_CLUBS, CLUB_ORDER } from '../data/initial';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   BarChart, Bar, ResponsiveContainer,
 } from 'recharts';
-import { BarChart2 } from 'lucide-react';
+import { BarChart2, Settings } from 'lucide-react';
 
 const CHART_GRID = '#E2E8DC';
 const CHART_TICK = { fill: '#56635A', fontSize: 10 };
@@ -15,18 +17,23 @@ const TOOLTIP_STYLE = { backgroundColor: '#FFFFFF', border: '1px solid #E2E8DC',
 const LEGEND_STYLE = { fontSize: 11, color: '#56635A' };
 
 export function AnalysisPage() {
-  const { state } = useApp();
+  const { state, goalThreshold } = useApp();
   const clubs = state.clubs.length > 0 ? state.clubs : INITIAL_CLUBS;
 
   const completedRounds = state.rounds
     .filter(r => r.status === 'completed')
     .sort((a, b) => a.date.localeCompare(b.date));
 
+  const sgAttr = computeSGAttribution(completedRounds.slice(-10), goalThreshold);
+
   if (completedRounds.length === 0) {
     return (
       <div className="min-h-full bg-ll-bg">
         <div className="px-5 pt-12 pb-6">
-          <h1 className="text-2xl font-bold text-ll-ink">分析</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-ll-ink">分析</h1>
+            <Link to="/settings" className="text-ll-mute active:text-ll-ink p-1"><Settings size={22} /></Link>
+          </div>
         </div>
         <div className="flex flex-col items-center justify-center py-24 text-ll-dim">
           <BarChart2 size={48} className="text-ll-dim mb-3" />
@@ -77,11 +84,68 @@ export function AnalysisPage() {
   return (
     <div className="min-h-full bg-ll-bg">
       <div className="px-5 pt-12 pb-5">
-        <h1 className="text-2xl font-bold text-ll-ink">分析</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-ll-ink">分析</h1>
+          <Link to="/settings" className="text-ll-mute active:text-ll-ink p-1"><Settings size={22} /></Link>
+        </div>
         <p className="text-ll-mute text-sm mt-1">直近{recentRounds.length}ラウンド平均: {avgScore ?? '-'}打 / {avgPutts ?? '-'}パット</p>
       </div>
 
       <div className="px-4 pb-6 space-y-5">
+        {/* SG Attribution card */}
+        {sgAttr ? (
+          <div className="bg-ll-surf border border-ll-line rounded-[22px] p-4 shadow-card">
+            <div className="flex items-start justify-between mb-1">
+              <h2 className="font-bold text-ll-ink">ストロークゲイン分析</h2>
+              <span className="text-xs text-ll-mute bg-ll-s2 px-2 py-0.5 rounded-full">{sgAttr.roundsUsed}R</span>
+            </div>
+            <p className="text-xs text-ll-mute mb-3">
+              目標{sgAttr.goalThreshold}打ゴルファー平均との差 (+が劣る、−が優れる)
+            </p>
+            {sgAttr.allNegative ? (
+              <div className="bg-ll-weak border border-ll-acc/30 rounded-xl p-3 text-sm text-ll-acc">
+                すべてのカテゴリでベンチマークを上回っています。目標スコアを上げることを検討しましょう。
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {(['tee', 'approach', 'shortGame', 'putting'] as const).map(cat => {
+                  const v = sgAttr[cat];
+                  const isPos = v > 0;
+                  const maxVal = Math.max(
+                    Math.abs(sgAttr.tee), Math.abs(sgAttr.approach),
+                    Math.abs(sgAttr.shortGame), Math.abs(sgAttr.putting), 0.1
+                  );
+                  const barW = Math.min(100, Math.abs(v) / maxVal * 100);
+                  return (
+                    <div key={cat}>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-ll-ink font-medium">{SG_CAT_LABEL[cat]}</span>
+                        <span className={`font-bold ${isPos ? 'text-ll-loss' : 'text-ll-good'}`}>
+                          {isPos ? `+${v}` : v}打/R
+                        </span>
+                      </div>
+                      <div className="bg-ll-s2 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${isPos ? 'bg-ll-loss' : 'bg-ll-good'}`}
+                          style={{ width: `${barW}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <p className="text-xs text-ll-dim mt-3">
+              ※ショット位置データがないため統計的近似値です
+            </p>
+          </div>
+        ) : completedRounds.length >= 1 && completedRounds.length < 3 ? (
+          <div className="bg-ll-surf border border-ll-line rounded-[22px] p-4 shadow-card">
+            <h2 className="font-bold text-ll-ink mb-1">ストロークゲイン分析</h2>
+            <p className="text-ll-mute text-sm">3ラウンド以上記録すると表示されます（現在{completedRounds.length}R）</p>
+          </div>
+        ) : null}
+
         {/* Loss analysis */}
         <div className="bg-ll-surf border border-ll-line rounded-[22px] p-4 shadow-card">
           <h2 className="font-bold text-ll-ink mb-3">失点分析（推定ロス打数）</h2>
