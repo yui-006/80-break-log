@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import type { Round, RoundHole, Course } from '../types';
 import { calcScoreStats } from '../analytics';
+import { m7GIR } from '../lib/metrics';
 import { Card } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
 import { WEATHER_OPTIONS } from '../data/initial';
@@ -206,10 +207,11 @@ export function RecordPage() {
                       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/rounds/${r.id}/scorecard`)}>
                         <p className="font-bold text-white truncate">{r.courseName}</p>
                         <p className="text-xs text-zinc-500">{r.date} / {r.teeName}</p>
-                        <div className="flex gap-3 mt-1">
+                        <div className="flex gap-3 mt-1 flex-wrap">
                           <span className="text-sm font-bold text-lime-400">{stats.totalScore}打</span>
                           <span className="text-xs text-zinc-500">{stats.totalPutts}パット</span>
                           {stats.totalOB > 0 && <span className="text-xs text-red-400">OB {stats.totalOB}</span>}
+                          {(() => { const g = m7GIR(r.holes); return g ? <span className="text-xs text-blue-400">GIR {g.hit}/{g.n}</span> : null; })()}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

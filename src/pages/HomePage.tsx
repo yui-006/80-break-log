@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { calcScoreStats, calcLosses, calcMissTendencies, generatePracticeMenu } from '../analytics';
+import { calcLosses, calcMissTendencies, generatePracticeMenu } from '../analytics';
+import { calcScoreStats } from '../analytics';
+import { m3TargetRate, m7GIR, m5ThreePutt, m10ParSave, m9FairwayHit, m14LossDistShort, m15LossDirection } from '../lib/metrics';
 import { Bell, Flag, ChevronRight, Play, Target, TrendingDown } from 'lucide-react';
 
 function ScoreCircle({ score, par }: { score: number; par: number }) {
@@ -43,29 +45,26 @@ export function HomePage() {
   const topActions = recentRounds.length > 0 ? generatePracticeMenu(calcMissTendencies(recentRounds)).slice(0, 2) : [];
   const totalLossPotential = Math.round(losses.reduce((s, l) => s + l.perRoundLoss, 0) * 10) / 10;
 
-  const recentStats = recentRounds.map(r => calcScoreStats(r.holes));
-  const avgOf = (fn: (s: ReturnType<typeof calcScoreStats>) => number | null) => {
-    const vals = recentStats.map(fn).filter((v): v is number => v !== null);
-    return vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10 : null;
-  };
-  const metrics = recentStats.length > 0 ? {
-    avgScore: avgOf(s => s.totalScore),
-    avgPutts: avgOf(s => s.totalPutts),
-    avgOB: avgOf(s => s.totalOB),
-    avg3Putt: avgOf(s => s.threePuttCount),
-    avgPar3: avgOf(s => s.par3Avg),
-    avgPar4: avgOf(s => s.par4Avg),
-    avgPar5: avgOf(s => s.par5Avg),
-  } : null;
+  const targetRate = m3TargetRate(completedRounds);
+  const loss14 = m14LossDistShort(recentRounds);
+  const loss15 = m15LossDirection(recentRounds);
+  const totalWedgeLoss = Math.round((loss14 + loss15) * 10) / 10;
 
   return (
     <div className="min-h-full bg-[#0f0f0f]">
       {/* Header */}
-      <div className="px-5 pt-12 pb-4 flex items-center justify-between">
-        <span className="text-white text-xl font-black tracking-widest">80 BREAK LOG</span>
-        <button className="text-zinc-400 active:text-white">
-          <Bell size={22} />
-        </button>
+      <div className="px-5 pt-12 pb-4">
+        <div className="flex items-center justify-between">
+          <span className="text-white text-xl font-black tracking-widest">80 BREAK LOG</span>
+          <button className="text-zinc-400 active:text-white">
+            <Bell size={22} />
+          </button>
+        </div>
+        {targetRate && targetRate.n > 0 && (
+          <p className="text-zinc-500 text-xs mt-1">
+            目標達成 <span className="text-lime-400 font-bold">{targetRate.hit}/{targetRate.n}</span>R
+          </p>
+        )}
       </div>
 
       <div className="px-4 space-y-4 pb-6">
@@ -133,6 +132,35 @@ export function HomePage() {
           </div>
         )}
 
+        {/* 2x2 stats — このR */}
+        {latest && (() => {
+          const gir = m7GIR(latest.holes);
+          const tp  = m5ThreePutt(latest.holes);
+          const ps  = m10ParSave(latest.holes);
+          const fw  = m9FairwayHit(latest.holes);
+          if (!gir && !tp && !ps && !fw) return null;
+          return (
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-zinc-900 rounded-2xl p-4 text-center">
+                <p className="text-2xl font-black text-white">{gir ? `${gir.hit}/${gir.n}` : '−'}</p>
+                <p className="text-xs text-zinc-500 mt-0.5">GIR</p>
+              </div>
+              <div className="bg-zinc-900 rounded-2xl p-4 text-center">
+                <p className="text-2xl font-black text-orange-400">{tp ? tp.count : '−'}</p>
+                <p className="text-xs text-zinc-500 mt-0.5">3パット</p>
+              </div>
+              <div className="bg-zinc-900 rounded-2xl p-4 text-center">
+                <p className="text-2xl font-black text-white">{ps ? `${ps.saved}/${ps.n}` : '−'}</p>
+                <p className="text-xs text-zinc-500 mt-0.5">パーセーブ</p>
+              </div>
+              <div className="bg-zinc-900 rounded-2xl p-4 text-center">
+                <p className="text-2xl font-black text-white">{fw ? `${fw.hit}/${fw.n}` : '−'}</p>
+                <p className="text-xs text-zinc-500 mt-0.5">FWキープ</p>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Loss ranking */}
         {losses.length > 0 && (
           <div className="bg-zinc-900 rounded-2xl p-5">
@@ -186,47 +214,28 @@ export function HomePage() {
           </div>
         )}
 
-        {/* Key metrics */}
-        {metrics && (
+        {/* 伸びしろ — m14/m15 ウェッジ */}
+        {recentRounds.length > 0 && totalWedgeLoss > 0 && (
           <div className="bg-zinc-900 rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-1">
               <TrendingDown size={15} className="text-lime-400" />
-              <h2 className="text-white font-bold text-sm tracking-wide">改善すべき指標</h2>
+              <h2 className="text-white font-bold text-sm tracking-wide">ウェッジ伸びしろ</h2>
               <span className="text-zinc-600 text-xs ml-auto">直近{recentRounds.length}R平均</span>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="bg-zinc-800 rounded-xl p-3 text-center">
-                <p className="text-xl font-black text-white">{metrics.avgPutts ?? '−'}</p>
-                <p className="text-xs text-zinc-500 mt-0.5">パット数</p>
-              </div>
-              <div className="bg-zinc-800 rounded-xl p-3 text-center">
-                <p className="text-xl font-black text-red-400">{metrics.avgOB ?? '−'}</p>
-                <p className="text-xs text-zinc-500 mt-0.5">OB</p>
-              </div>
-              <div className="bg-zinc-800 rounded-xl p-3 text-center">
-                <p className="text-xl font-black text-orange-400">{metrics.avg3Putt ?? '−'}</p>
-                <p className="text-xs text-zinc-500 mt-0.5">3パット</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2 mt-2">
-              <div className="bg-zinc-800 rounded-xl p-3 text-center">
-                <p className="text-lg font-black text-zinc-300">
-                  {metrics.avgPar3 !== null ? (metrics.avgPar3 >= 0 ? `+${metrics.avgPar3}` : metrics.avgPar3) : '−'}
-                </p>
-                <p className="text-xs text-zinc-500 mt-0.5">Par3差</p>
-              </div>
-              <div className="bg-zinc-800 rounded-xl p-3 text-center">
-                <p className="text-lg font-black text-zinc-300">
-                  {metrics.avgPar4 !== null ? (metrics.avgPar4 >= 0 ? `+${metrics.avgPar4}` : metrics.avgPar4) : '−'}
-                </p>
-                <p className="text-xs text-zinc-500 mt-0.5">Par4差</p>
-              </div>
-              <div className="bg-zinc-800 rounded-xl p-3 text-center">
-                <p className="text-lg font-black text-zinc-300">
-                  {metrics.avgPar5 !== null ? (metrics.avgPar5 >= 0 ? `+${metrics.avgPar5}` : metrics.avgPar5) : '−'}
-                </p>
-                <p className="text-xs text-zinc-500 mt-0.5">Par5差</p>
-              </div>
+            <p className="text-zinc-500 text-xs mb-3">改善で1ラウンド約{totalWedgeLoss}打縮まる見込み</p>
+            <div className="space-y-2">
+              {loss14 > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-300 text-sm">距離不足（PW以下）</span>
+                  <span className="text-red-400 font-bold text-sm">{loss14}打/R</span>
+                </div>
+              )}
+              {loss15 > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-300 text-sm">方向ミス（PW以下）</span>
+                  <span className="text-red-400 font-bold text-sm">{loss15}打/R</span>
+                </div>
+              )}
             </div>
           </div>
         )}

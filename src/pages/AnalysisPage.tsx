@@ -1,6 +1,7 @@
 import { useApp } from '../context/AppContext';
 import { calcScoreStats, calcLosses, calcMissTendencies, calcMissTrend, calcClubStats, calcClubDistanceStats } from '../analytics';
 import type { ClubStat } from '../analytics';
+import { m7GIR, m10ParSave } from '../lib/metrics';
 import { INITIAL_CLUBS, CLUB_ORDER } from '../data/initial';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -36,8 +37,17 @@ export function AnalysisPage() {
   }
 
   const scoreTrend = completedRounds.map(r => {
-    const st = calcScoreStats(r.holes);
-    return { date: r.date.slice(5), score: st.totalScore, putts: st.totalPutts, ob: st.totalOB };
+    const st  = calcScoreStats(r.holes);
+    const gir = m7GIR(r.holes);
+    const ps  = m10ParSave(r.holes);
+    return {
+      date:    r.date.slice(5),
+      score:   st.totalScore,
+      putts:   st.totalPutts,
+      ob:      st.totalOB,
+      girPct:  gir && gir.n > 0 ? Math.round(gir.hit / gir.n * 100) : null,
+      psPct:   ps  && ps.n  > 0 ? Math.round(ps.saved / ps.n  * 100) : null,
+    };
   });
 
   const losses = calcLosses(completedRounds);
@@ -129,6 +139,24 @@ export function AnalysisPage() {
             </LineChart>
           </ResponsiveContainer>
         </div>
+
+        {/* GIR / par-save trend */}
+        {scoreTrend.some(d => d.girPct != null) && (
+          <div className="bg-zinc-900 rounded-2xl p-4">
+            <h2 className="font-bold text-white mb-3">GIR・パーセーブ推移 (%)</h2>
+            <ResponsiveContainer width="100%" height={170}>
+              <LineChart data={scoreTrend} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+                <XAxis dataKey="date" tick={CHART_TICK} />
+                <YAxis tick={CHART_TICK} domain={[0, 100]} unit="%" />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => `${v}%`} />
+                <Legend wrapperStyle={LEGEND_STYLE} />
+                <Line type="monotone" dataKey="girPct" stroke="#a3e635" strokeWidth={2} dot={{ r: 3 }} name="GIR%" connectNulls />
+                <Line type="monotone" dataKey="psPct" stroke="#60a5fa" strokeWidth={2} dot={{ r: 3 }} name="パーセーブ%" connectNulls />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
 
         {/* Putts and OB trend */}
         <div className="bg-zinc-900 rounded-2xl p-4">
@@ -278,11 +306,13 @@ export function AnalysisPage() {
                   <th className="py-1.5 px-2 text-right">Putt</th>
                   <th className="py-1.5 px-2 text-right">OB</th>
                   <th className="py-1.5 px-2 text-right">3P</th>
+                  <th className="py-1.5 px-2 text-right">GIR</th>
                 </tr>
               </thead>
               <tbody>
                 {completedRounds.slice().reverse().map(r => {
-                  const st = calcScoreStats(r.holes);
+                  const st  = calcScoreStats(r.holes);
+                  const gir = m7GIR(r.holes);
                   return (
                     <tr key={r.id} className="border-b border-zinc-800">
                       <td className="py-1.5 pr-2 text-zinc-500">{r.date.slice(5)}</td>
@@ -293,6 +323,7 @@ export function AnalysisPage() {
                       <td className="py-1.5 px-2 text-right text-zinc-400">{st.totalPutts}</td>
                       <td className="py-1.5 px-2 text-right text-red-400">{st.totalOB || '-'}</td>
                       <td className="py-1.5 px-2 text-right text-orange-400">{st.threePuttCount || '-'}</td>
+                      <td className="py-1.5 px-2 text-right text-blue-400">{gir ? `${gir.hit}/${gir.n}` : '-'}</td>
                     </tr>
                   );
                 })}

@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { calcScoreStats, calcLossesFromHoles } from '../analytics';
+import { isGIR, m7GIR, m5ThreePutt, m10ParSave, m6GirAvgPutts } from '../lib/metrics';
 import { SHOT_TYPE_LABELS, INITIAL_CLUBS } from '../data/initial';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -50,6 +51,7 @@ export function ScoreCardPage() {
         <td className="px-3 py-2.5 text-sm font-medium text-zinc-400">{h.holeNo}</td>
         <td className="px-2 py-2.5 text-sm text-center text-zinc-500">{h.par}</td>
         <td className={`px-2 py-2.5 text-sm text-center font-bold ${scoreDiffColor(h.score, h.par)}`}>
+          {isGIR(h) && <span className="text-lime-400 text-xs mr-0.5">●</span>}
           {h.score ?? '-'}
           {h.putts != null && <span className="text-zinc-500 font-normal text-xs">({h.putts})</span>}
         </td>
@@ -168,6 +170,46 @@ export function ScoreCardPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Shot stats: GIR / par-save / 3-putt / GIR avg putts */}
+        {(() => {
+          const gir     = m7GIR(round.holes);
+          const ps      = m10ParSave(round.holes);
+          const tp      = m5ThreePutt(round.holes);
+          const girAvg  = m6GirAvgPutts(round.holes);
+          if (!gir && !ps && !tp && girAvg == null) return null;
+          return (
+            <div className="bg-zinc-900 rounded-2xl p-4">
+              <h2 className="font-bold text-white mb-3">ショット統計</h2>
+              <div className="grid grid-cols-2 gap-2">
+                {gir && (
+                  <div className="bg-zinc-800 rounded-xl p-3 text-center">
+                    <p className="text-xl font-black text-white">{gir.hit}/{gir.n}</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">GIR（パーオン）</p>
+                  </div>
+                )}
+                {ps && (
+                  <div className="bg-zinc-800 rounded-xl p-3 text-center">
+                    <p className="text-xl font-black text-white">{ps.saved}/{ps.n}</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">パーセーブ</p>
+                  </div>
+                )}
+                {tp && (
+                  <div className="bg-zinc-800 rounded-xl p-3 text-center">
+                    <p className="text-xl font-black text-orange-400">{tp.count}/{tp.n}</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">3パット</p>
+                  </div>
+                )}
+                {girAvg != null && (
+                  <div className="bg-zinc-800 rounded-xl p-3 text-center">
+                    <p className="text-xl font-black text-blue-400">{girAvg.toFixed(1)}</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">GIR平均パット</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Loss summary */}
         {(() => {
