@@ -5,8 +5,11 @@ import { useGeolocation, haversineYards } from '../lib/geo';
 import { GolfMap } from '../components/map/GolfMap';
 import type { GeoPos } from '../lib/geo';
 import type { MapMarker, MapPolyline } from '../components/map/GolfMap';
-import type { GreenPoint } from '../types';
+import type { GreenPoint, Shot } from '../types';
+import { INITIAL_CLUBS, CLUB_ORDER } from '../data/initial';
 import { ArrowLeft, MapPin, Navigation, RotateCcw, Locate } from 'lucide-react';
+
+const GPS_LAST_CLUB_KEY = '80bl-gps-last-club';
 
 type Tab = 'distance' | 'yards';
 
@@ -30,17 +33,33 @@ function GpsBadge({ pos, error }: { pos: GeoPos | null; error: string | null }) 
 // ── 飛距離計測タブ ──────────────────────────────────────────────────────────
 
 function DistanceTab({ roundId, holeNo }: { roundId?: string; holeNo?: number }) {
-  const { state, saveGreenPoint } = useApp();
+  const { state, saveGreenPoint, saveRound } = useApp();
   const { pos, error, watching, start, stop } = useGeolocation();
   const [pointA, setPointA] = useState<GeoPos | null>(null);
   const [pointB, setPointB] = useState<GeoPos | null>(null);
+  const [savedMsg, setSavedMsg] = useState(false);
   const teeAutoSaved = useRef(false);
+
+  // Club selector — remember last used, default to 1W on first use
+  const clubs = state.clubs.length > 0 ? state.clubs : INITIAL_CLUBS;
+  const sortedClubs = [...clubs].sort((a, b) => CLUB_ORDER.indexOf(a.id) - CLUB_ORDER.indexOf(b.id));
+  const [selectedClubId, setSelectedClubId] = useState<string>(() => {
+    const last = localStorage.getItem(GPS_LAST_CLUB_KEY);
+    if (last && clubs.some(c => c.id === last)) return last;
+    return clubs.find(c => c.name.startsWith('1W') || c.name === 'ドライバー')?.id ?? clubs[0]?.id ?? '';
+  });
+
+  function selectClub(id: string) {
+    setSelectedClubId(id);
+    localStorage.setItem(GPS_LAST_CLUB_KEY, id);
+  }
 
   useEffect(() => { start(); return stop; }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Context for tee auto-save
+  // Round/hole context for tee auto-save and shot recording
   const round = roundId ? state.rounds.find(r => r.id === roundId) : undefined;
   const course = round ? state.courses.find(c => c.id === round.courseId) : undefined;
+  const currentHole = round && holeNo != null ? round.holes.find(h => h.holeNo === holeNo) : undefined;
   const existingTee = course && holeNo != null
     ? state.greenPoints.find(g => g.courseId === course.id && g.holeNumber === holeNo && g.pointType === 'tee')
     : undefined;
@@ -48,7 +67,7 @@ function DistanceTab({ roundId, holeNo }: { roundId?: string; holeNo?: number })
   const markA = useCallback(() => {
     if (!pos) return;
     setPointA(pos);
-    // Auto-save ① as tee if context is available and tee isn't registered yet
+    // Auto-save ① as tee if context available and tee not yet registered
     if (course && holeNo != null && !existingTee && !teeAutoSaved.current) {
       teeAutoSaved.current = true;
       const teePoint: GreenPoint = {
@@ -65,14 +84,45 @@ function DistanceTab({ roundId, holeNo }: { roundId?: string; holeNo?: number })
   }, [pos, course, holeNo, existingTee, saveGreenPoint]);
 
   const markB = useCallback(() => { if (pos) setPointB(pos); }, [pos]);
+
   const reset = useCallback(() => {
     setPointA(null); setPointB(null);
+    setSavedMsg(false);
     teeAutoSaved.current = false;
   }, []);
 
   const distance = pointA && pointB ? haversineYards(pointA, pointB) : null;
   const poorAccuracy = (pointA && pointA.accuracy > 10) || (pointB && pointB.accuracy > 10);
   const tooShort = distance !== null && distance < 30;
+  const canRecord = distance !== null && !!round && !!currentHole;
+
+  // Save measured distance as a Shot in the current hole
+  async function recordShot() {
+    if (!canRecord || distance === null || !currentHole || !round) return;
+    const isTeeShot = teeAutoSaved.current || currentHole.shots.length === 0;
+    const nextShotNo = currentHole.shots.length > 0
+      ? Math.max(...currentHole.shots.map(s => s.shotNo)) + 1
+      : 1;
+    const newShot: Shot = {
+      id: crypto.randomUUID(),
+      roundHoleId: currentHole.id,
+      shotNo: nextShotNo,
+      shotTypes: isTeeShot ? ['tee', 'full'] : ['full'],
+      clubId: selectedClubId || undefined,
+      distance,
+    };
+    const updatedRound = {
+      ...round,
+      holes: round.holes.map(h => h.id === currentHole.id
+        ? { ...currentHole, shots: [...currentHole.shots, newShot] }
+        : h),
+      updatedAt: new Date().toISOString(),
+    };
+    await saveRound(updatedRound);
+    setSavedMsg(true);
+    // Auto-reset after confirmation so user can measure next shot
+    setTimeout(() => reset(), 1800);
+  }
 
   const mapCenter: [number, number] = pos
     ? [pos.lat, pos.lng]
@@ -87,13 +137,36 @@ function DistanceTab({ roundId, holeNo }: { roundId?: string; holeNo?: number })
     ? [{ points: [[pointA.lat, pointA.lng], [pointB.lat, pointB.lng]], color: '#f97316' }]
     : [];
 
+  const selectedClub = clubs.find(c => c.id === selectedClubId);
+
   return (
     <div className="flex flex-col h-full">
+      {/* GPS status */}
       <div className="px-4 py-2 flex items-center justify-between bg-ll-surf border-b border-ll-line">
         <GpsBadge pos={pos} error={error} />
         {watching && <span className="text-xs text-ll-acc">GPS有効</span>}
       </div>
 
+      {/* Club selector */}
+      <div className="bg-ll-surf border-b border-ll-line py-2 overflow-x-auto">
+        <div className="flex gap-1.5 px-4">
+          {sortedClubs.map(c => (
+            <button
+              key={c.id}
+              onClick={() => selectClub(c.id)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition ${
+                selectedClubId === c.id
+                  ? 'bg-ll-acc text-white'
+                  : 'bg-ll-s2 text-ll-ink border border-ll-line'
+              }`}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Map */}
       <div className="flex-1 min-h-0">
         <GolfMap
           center={mapCenter}
@@ -104,19 +177,28 @@ function DistanceTab({ roundId, holeNo }: { roundId?: string; holeNo?: number })
         />
       </div>
 
+      {/* Controls */}
       <div className="bg-ll-surf border-t border-ll-line px-4 py-4 space-y-3">
+        {/* Distance result */}
         {distance !== null && (
           <div className="text-center">
-            <p className="text-5xl font-black text-ll-ink tabular-nums">{distance}</p>
-            <p className="text-ll-mute text-sm mt-0.5">ヤード</p>
+            <div className="flex items-baseline justify-center gap-2">
+              <p className="text-5xl font-black text-ll-ink tabular-nums">{distance}</p>
+              <span className="text-ll-mute text-base">y</span>
+              {selectedClub && <span className="text-ll-mute text-sm">{selectedClub.name}</span>}
+            </div>
             {(poorAccuracy || tooShort) && (
               <p className="text-xs text-ll-warn mt-1">
                 {tooShort ? '短距離はGPS誤差の影響を受けやすい（参考値）' : 'GPS精度が低いため参考値'}
               </p>
             )}
+            {savedMsg && (
+              <p className="text-xs text-ll-good mt-1 font-medium">ショット記録に追加しました</p>
+            )}
           </div>
         )}
 
+        {/* ① ② marks */}
         <div className="grid grid-cols-2 gap-3">
           <button onClick={markA} disabled={!pos}
             className={`py-3.5 rounded-2xl font-bold text-base transition ${
@@ -132,11 +214,21 @@ function DistanceTab({ roundId, holeNo }: { roundId?: string; holeNo?: number })
           </button>
         </div>
 
-        {(pointA || pointB) && (
-          <button onClick={reset} className="w-full flex items-center justify-center gap-2 text-ll-mute text-sm py-2 active:text-ll-ink">
-            <RotateCcw size={14} /> リセット
-          </button>
-        )}
+        {/* Reset + Record */}
+        <div className="flex gap-2">
+          {(pointA || pointB) && (
+            <button onClick={reset}
+              className="flex items-center gap-1.5 text-ll-mute text-sm px-4 py-2.5 rounded-xl border border-ll-line active:bg-ll-s2">
+              <RotateCcw size={13} /> リセット
+            </button>
+          )}
+          {canRecord && !savedMsg && (
+            <button onClick={recordShot}
+              className="flex-1 bg-ll-good text-white py-2.5 rounded-xl text-sm font-bold active:opacity-80">
+              この距離を記録 →
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
