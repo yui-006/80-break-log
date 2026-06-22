@@ -148,24 +148,28 @@ export function AnalysisPage() {
 
         {/* Loss analysis */}
         <div className="bg-ll-surf border border-ll-line rounded-[22px] p-4 shadow-card">
-          <h2 className="font-bold text-ll-ink mb-3">失点分析（推定ロス打数）</h2>
+          <h2 className="font-bold text-ll-ink mb-1">失点分析（推定ロス打数）</h2>
+          <p className="text-ll-mute text-xs mb-3">1ラウンド平均 ({completedRounds.length}R)</p>
           {losses.filter(l => l.count > 0).length === 0 ? (
             <p className="text-sm text-ll-mute text-center py-3">ショットログを記録すると表示されます</p>
           ) : (
             <div className="space-y-3">
-              {losses.filter(l => l.count > 0).map(l => (
-                <div key={l.key}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-ll-ink font-medium">{l.label}</span>
-                    <span className="font-bold text-ll-loss">+{l.estimatedLoss}</span>
+              {losses.filter(l => l.count > 0).map(l => {
+                const perRound = Math.round(l.estimatedLoss / completedRounds.length * 10) / 10;
+                return (
+                  <div key={l.key}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-ll-ink font-medium">{l.label}</span>
+                      <span className="font-bold text-ll-loss">+{perRound}/R</span>
+                    </div>
+                    <div className="bg-ll-s2 rounded-full h-2">
+                      <div className="bg-ll-loss h-2 rounded-full"
+                        style={{ width: `${Math.min(100, (l.estimatedLoss / (losses[0]?.estimatedLoss || 1)) * 100)}%` }} />
+                    </div>
+                    <p className="text-xs text-ll-mute mt-0.5">{l.count}回</p>
                   </div>
-                  <div className="bg-ll-s2 rounded-full h-2">
-                    <div className="bg-ll-loss h-2 rounded-full"
-                      style={{ width: `${Math.min(100, (l.estimatedLoss / (losses[0]?.estimatedLoss || 1)) * 100)}%` }} />
-                  </div>
-                  <p className="text-xs text-ll-mute mt-0.5">{l.count}回</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -300,7 +304,7 @@ export function AnalysisPage() {
                 <thead>
                   <tr className="text-ll-mute border-b border-ll-line">
                     <th className="py-1.5 text-left pr-3">クラブ</th>
-                    <th className="py-1.5 px-2 text-right">本数</th>
+                    <th className="py-1.5 px-2 text-right">回数</th>
                     <th className="py-1.5 px-2 text-right">最大</th>
                     <th className="py-1.5 px-2 text-right">最小</th>
                     <th className="py-1.5 px-2 text-right">平均</th>
