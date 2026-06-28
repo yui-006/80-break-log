@@ -7,10 +7,18 @@ create table if not exists green_points (
   hole_number int  not null,
   lat         double precision not null,
   lng         double precision not null,
-  point_type  text not null default 'center', -- future: 'front', 'back'
+  point_type  text not null default 'center', -- 'center' | 'front' | 'back' | 'tee'
+  green_label text not null default 'main',   -- 'main' | 'A' | 'B' (for 2-green holes)
   updated_at  timestamptz default now(),
-  unique (course_id, hole_number, point_type)
+  unique (course_id, hole_number, green_label, point_type)
 );
+
+-- Migration: add green_label to existing tables
+alter table green_points add column if not exists green_label text not null default 'main';
+-- Drop old constraint (single point_type per hole) and replace with label-aware one
+alter table green_points drop constraint if exists green_points_course_id_hole_number_point_type_key;
+alter table green_points add constraint green_points_course_hole_label_type_key
+  unique (course_id, hole_number, green_label, point_type);
 
 -- RLS: ownership via courses table (no user_id column on green_points itself)
 alter table green_points enable row level security;

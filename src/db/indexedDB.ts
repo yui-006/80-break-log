@@ -64,7 +64,10 @@ export const storage = {
   async savePracticeLog(entry: PracticeLogEntry): Promise<void> { await (await getDB()).put('practiceLogs', entry); },
   async deletePracticeLog(id: string): Promise<void>          { await (await getDB()).delete('practiceLogs', id); },
 
-  async getGreenPoints(): Promise<GreenPoint[]>               { return (await getDB()).getAll('greenPoints'); },
+  async getGreenPoints(): Promise<GreenPoint[]> {
+    const raw = await (await getDB()).getAll('greenPoints') as (GreenPoint & { greenLabel?: string })[];
+    return raw.map(p => ({ ...p, greenLabel: p.greenLabel ?? 'main' }));
+  },
   async saveGreenPoint(point: GreenPoint): Promise<void>      { await (await getDB()).put('greenPoints', point); },
   async deleteGreenPoint(id: string): Promise<void>           { await (await getDB()).delete('greenPoints', id); },
 

@@ -159,7 +159,8 @@ export type GreenPoint = {
   holeNumber: number;
   lat: number;
   lng: number;
-  pointType: 'center' | 'tee';
+  pointType: 'center' | 'tee' | 'front' | 'back';
+  greenLabel: string; // 'main' | 'A' | 'B' …
   updatedAt: string;
 };
 

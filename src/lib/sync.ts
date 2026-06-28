@@ -75,7 +75,6 @@ export async function syncGoalThreshold(goal: number, activeClubSetId: string | 
 export async function syncGreenPoint(point: GreenPoint): Promise<void> {
   const uid = await userId();
   if (!uid) return;
-  // Upsert by id; course ownership verified via RLS (courses.user_id = auth.uid())
   await supabase.from('green_points').upsert({
     id: point.id,
     course_id: point.courseId,
@@ -83,6 +82,7 @@ export async function syncGreenPoint(point: GreenPoint): Promise<void> {
     lat: point.lat,
     lng: point.lng,
     point_type: point.pointType,
+    green_label: point.greenLabel,
     updated_at: ts(),
   }, { onConflict: 'id' });
 }
@@ -183,7 +183,8 @@ export async function pullAll(): Promise<PullResult | null> {
     holeNumber: r.hole_number as number,
     lat: r.lat as number,
     lng: r.lng as number,
-    pointType: 'center' as const,
+    pointType: (r.point_type as GreenPoint['pointType']) ?? 'center',
+    greenLabel: (r.green_label as string | null) ?? 'main',
     updatedAt: r.updated_at as string,
   }));
 
@@ -250,7 +251,7 @@ export async function pushAll(
       ? supabase.from('green_points').upsert(greenPoints.map(g => ({
           id: g.id, course_id: g.courseId,
           hole_number: g.holeNumber, lat: g.lat, lng: g.lng,
-          point_type: g.pointType, updated_at: now,
+          point_type: g.pointType, green_label: g.greenLabel, updated_at: now,
         })), { onConflict: 'id' })
       : Promise.resolve(),
 

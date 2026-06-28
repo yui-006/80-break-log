@@ -15,6 +15,33 @@ export function haversineYards(
   return Math.round(meters / 0.9144);
 }
 
+// ── Bearing between two points (degrees, clockwise from north) ────────────
+export function bearingDeg(
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number },
+): number {
+  const toRad = (d: number) => d * Math.PI / 180;
+  const dLng = toRad(to.lng - from.lng);
+  const lat1 = toRad(from.lat), lat2 = toRad(to.lat);
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+// ── Move from point p in bearing direction by distM metres ────────────────
+export function destinationPoint(
+  p: { lat: number; lng: number },
+  bearing: number,
+  distM: number,
+): { lat: number; lng: number } {
+  const R = 6371000;
+  const br = bearing * Math.PI / 180;
+  const la1 = p.lat * Math.PI / 180, lo1 = p.lng * Math.PI / 180, d = distM / R;
+  const la2 = Math.asin(Math.sin(la1) * Math.cos(d) + Math.cos(la1) * Math.sin(d) * Math.cos(br));
+  const lo2 = lo1 + Math.atan2(Math.sin(br) * Math.sin(d) * Math.cos(la1), Math.cos(d) - Math.sin(la1) * Math.sin(la2));
+  return { lat: la2 * 180 / Math.PI, lng: lo2 * 180 / Math.PI };
+}
+
 // ── Geolocation hook ───────────────────────────────────────────────────────
 export type GeoPos = { lat: number; lng: number; accuracy: number };
 

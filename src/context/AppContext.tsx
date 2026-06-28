@@ -446,9 +446,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ── Green points ──────────────────────────────────────────────────────────
 
   const saveGreenPoint = useCallback(async (point: GreenPoint) => {
-    // Reuse existing id if a point for this course+hole+type already exists
+    // Reuse existing id if a point for this course+hole+label+type already exists
     const existing = stateRef.current.greenPoints.find(
-      g => g.courseId === point.courseId && g.holeNumber === point.holeNumber && g.pointType === point.pointType
+      g => g.courseId === point.courseId && g.holeNumber === point.holeNumber &&
+           g.greenLabel === point.greenLabel && g.pointType === point.pointType
     );
     const toSave = existing ? { ...point, id: existing.id } : point;
     await storage.saveGreenPoint(toSave);
